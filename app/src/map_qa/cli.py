@@ -106,3 +106,7 @@ def _ensure_utf8_streams() -> None:
 def main() -> None:
     _ensure_utf8_streams()
     app()
+
+
+if __name__ == "__main__":
+    main()
