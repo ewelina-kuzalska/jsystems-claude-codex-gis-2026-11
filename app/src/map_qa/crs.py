@@ -59,14 +59,16 @@ def to_2180(gdf: gpd.GeoDataFrame, name: str = "warstwa") -> gpd.GeoDataFrame:
     _expect_crs(gdf, ("EPSG:4326", "OGC:CRS84"), name)
     out = gdf.copy()
     source = "OGC:CRS84" if gdf.crs == CRS.from_user_input("OGC:CRS84") else "EPSG:4326"
-    out["geometry"] = [geometry_to_2180(g, source) for g in gdf.geometry]
+    out["geometry"] = shapely.transform(gdf.geometry.values, lambda c: _vec(c, source, EPSG_2180))
     return out.set_crs(EPSG_2180, allow_override=True)
 
 
 def to_4326(gdf: gpd.GeoDataFrame, name: str = "warstwa") -> gpd.GeoDataFrame:
     _expect_crs(gdf, (EPSG_2180,), name)
     out = gdf.copy()
-    out["geometry"] = [geometry_to_4326(g) for g in gdf.geometry]
+    out["geometry"] = shapely.transform(
+        gdf.geometry.values, lambda c: _vec(c, EPSG_2180, "EPSG:4326")
+    )
     return out.set_crs("EPSG:4326", allow_override=True)
 
 

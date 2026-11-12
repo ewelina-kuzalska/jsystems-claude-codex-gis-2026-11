@@ -38,6 +38,7 @@ packages = ["src/map_qa"]
 testpaths = ["tests"]
 addopts = "--block-network -m 'not live_api' -ra"
 markers = [
+    "slow: testy na pełnym snapshocie (kilka sekund)",
     "live_api: wywołuje prawdziwe endpointy OpenRouter (ADR-006 D-604); uruchamiaj: uv run pytest -m live_api -p no:recording",
 ]
 
