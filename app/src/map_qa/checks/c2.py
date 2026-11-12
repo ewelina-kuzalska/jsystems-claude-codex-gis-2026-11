@@ -104,7 +104,9 @@ def check_discrepancy(
         rules = rules_for_segment(seg.id, seg.speed_limits, seg.road_surface)
         speed_rules = [r for r in rules if r.rule_kind == "speed"]
         surface_rules = [r for r in rules if r.rule_kind == "surface"]
-        has_heading = any(r.heading for r in speed_rules)
+        # Kierunkowe są tylko reguły bezwarunkowe z `heading`; reguła z `heading` i np.
+        # `mode` jest warunkowa i nie wypiera reguły bezwarunkowej (ADR-001 §3.6).
+        has_heading = any(r.heading and r.unconditional for r in speed_rules)
         for source in sources_for_segment(seg.id, seg.sources):
             way = source.osm_way_id
             if way is None or way not in osm_by_id:
@@ -116,8 +118,12 @@ def check_discrepancy(
             tags_raw, tags, values = way_cache[way]
             orientation = None
             directions = ["both"]
+            # Kierunek z tą samą wartością co `maxspeed` dałby tę samą różnicę drugi raz.
             directions += [
-                d for d in ("forward", "backward") if f"maxspeed:{d}" in tags or has_heading
+                d
+                for d in ("forward", "backward")
+                if has_heading
+                or (f"maxspeed:{d}" in tags and tags[f"maxspeed:{d}"] != tags.get("maxspeed"))
             ]
             base = {
                 "osm_id": way,
@@ -156,7 +162,7 @@ def _relevant_rules(
     plain = [r for r in rules if not r.heading]
     if direction == "both":
         return plain, False
-    headed = [r for r in rules if r.heading]
+    headed = [r for r in rules if r.heading and r.unconditional]
     if headed:
         if orientation not in ("same", "reversed"):
             return [], True

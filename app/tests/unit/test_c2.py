@@ -204,3 +204,30 @@ def test_sum_of_outcomes_equals_comparisons():  # TAC-001-05
 def test_spatial_only_list():
     r = run({"maxspeed": "50"}, [], links_rows=[("p1", "1", "s1", "spatial_fallback", "3.2", ())])
     assert [x["photo_id"] for x in r.spatial_only] == ["p1"]
+
+
+# --- Poprawki po przeglądzie T27 ------------------------------------------------------------
+
+
+def test_conditional_headed_rule_does_not_hide_unconditional():  # ADR-001 §3.6
+    r = run(
+        {"maxspeed": "50", "maxspeed:forward": "30"},
+        [speed(50), speed(40, when={"heading": "forward", "mode": ["hgv"]})],
+    )
+    assert [(c.direction, c.osm_normalized, c.overture_normalized) for c in r.candidates] == [
+        ("forward", "30", "50")
+    ]
+
+
+def test_conditional_headed_rules_no_spurious_direction_unknown():
+    r = run(
+        {"maxspeed": "50"},
+        [speed(50), speed(40, when={"heading": "forward", "mode": ["hgv"]})],
+        seg_line=NORTH,
+    )
+    assert all(n.reason_code != "direction_unknown" for n in r.not_comparable)
+
+
+def test_same_directional_value_not_counted_twice():
+    r = run({"maxspeed": "50", "maxspeed:forward": "50"}, [speed(70)])
+    assert [c.direction for c in r.candidates] == ["both"]
