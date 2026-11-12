@@ -4,3 +4,6 @@
 *.py text eol=lf
 *.toml text eol=lf
 *.yml text eol=lf
+
+# map-qa: fixture bytes must match their SHA-256 in sources.json
+app/tests/fixtures/** -text
