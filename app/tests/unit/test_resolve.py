@@ -211,3 +211,19 @@ def test_resolve_never_opens_labels(tmp_path, monkeypatch):  # TAC-003-04
     monkeypatch.setattr(Path, "open", spy_path)
     run(FakeReader(t1={"a": ("50", 0.9)}), items("a"), tmp_path)
     assert not any("labels.csv" in f for f in opened)
+
+
+def test_prepare_failure_fails_closed(tmp_path):  # przegląd T27: brak wyjątku na całym przebiegu
+    class Broken(FakeReader):
+        def prepare(self, tier, crop_sha256, crop):
+            raise OSError("cannot identify image file")
+
+    crops = items("a")
+    sample, _ = select_sample(crops, AiCache(tmp_path / "c"), Broken(), new_crop_budget=12)
+    res, budget = run(Broken(), sample, tmp_path)
+    assert (res["a"].resolved_by, res["a"].manual_reason, res["a"].detail) == (
+        "human_pending",
+        "model_unavailable",
+        "crop_invalid",
+    )
+    assert budget.used == 0

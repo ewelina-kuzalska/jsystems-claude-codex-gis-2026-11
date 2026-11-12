@@ -73,9 +73,14 @@ def select_sample(items: list[CropItem], cache: AiCache, reader, new_crop_budget
     ordered = sorted(items, key=lambda x: x.photo_id)
     cached, new, invalid, not_run = [], [], [], []
     for item in ordered:
+        if not item.invalid_reason:
+            try:
+                hit = _cache_entry(cache, reader, 1, item)[1] is not None
+            except (OSError, ValueError):  # obraz nie daje się przygotować: fail closed
+                item = CropItem(item.photo_id, item.crop_sha256, None, "crop_invalid")
         if item.invalid_reason:
             invalid.append(item)
-        elif _cache_entry(cache, reader, 1, item)[1] is not None:
+        elif hit:
             cached.append(item)
         elif len(new) < new_crop_budget:
             new.append(item)

@@ -88,3 +88,17 @@ def test_all_fixture_crops_pass(fixtures_dir):
     with (base / "signs.csv").open(encoding="utf-8") as f:
         for row in csv.DictReader(f):
             assert check_crop(base / "crops" / f"{row['photo_id']}.jpg", row["crop_sha256"]).ok
+
+
+def test_garbage_jpeg_with_matching_hash_is_invalid(tmp_path):  # przegląd T27
+    p = tmp_path / "x.jpg"
+    p.write_bytes(b"\xff\xd8" + b"garbage-not-a-jpeg" * 10)
+    res = check_crop(p, hashlib.sha256(p.read_bytes()).hexdigest())
+    assert not res.ok and res.reason == "crop_invalid"
+
+
+def test_truncated_marker_structure_fails_closed(tmp_path):
+    p = tmp_path / "y.jpg"
+    p.write_bytes(b"\xff\xd8\x00\x01\x02")
+    res = check_crop(p, hashlib.sha256(p.read_bytes()).hexdigest())
+    assert not res.ok
