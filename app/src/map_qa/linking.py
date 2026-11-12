@@ -13,6 +13,7 @@ import pandas as pd
 from shapely.geometry import Point
 
 from map_qa.crs import angle_diff, angle_diffs, local_bearing, to_2180_xy
+from map_qa.model import SignRoadContext
 from map_qa.normalize.osm import load_tags
 
 RADIUS_M = 25.0
@@ -140,3 +141,79 @@ def recheck_links(links: pd.DataFrame, photos: pd.DataFrame, index: OsmIndex) ->
         bool(f or o) for f, o in zip(out["file_flags"], out["own_flags"], strict=True)
     ]
     return out
+
+
+# --- Kierunek OSM dla znaku C4 (ADR-002 §3.4, D-204) ----------------------------------
+
+SNAPSHOT_SOURCE = "osm_roads.parquet"
+SPEED_COLUMNS = {
+    "maxspeed": "maxspeed",
+    "maxspeed_forward": "maxspeed:forward",
+    "maxspeed_backward": "maxspeed:backward",
+    "maxspeed_conditional": "maxspeed:conditional",
+}
+
+
+def _text(row, key: str) -> str:
+    value = row.get(key, "") if hasattr(row, "get") else ""
+    return "" if value is None else str(value).strip()
+
+
+def sign_road_context(sign, nearest_row, index: OsmIndex) -> SignRoadContext:
+    """Wartość OSM do porównania ze znakiem; `outside_snapshot` dla way spoza snapshotu."""
+    from map_qa.normalize.osm import parse_maxspeed
+
+    photo_id = _text(sign, "photo_id")
+    way_text = _text(nearest_row, "osm_way_id")
+    way_id = int(way_text) if way_text else None
+    raw = {
+        tag: _text(nearest_row, col)
+        for col, tag in SPEED_COLUMNS.items()
+        if _text(nearest_row, col)
+    }
+    flags = [f for f in _text(nearest_row, "match_flags").split(";") if f]
+    oneway = _text(nearest_row, "oneway")
+    from_api = _text(nearest_row, "source") != SNAPSHOT_SOURCE
+    missing_way = way_id is None or way_id not in index.lines.index
+    if from_api or missing_way:
+        if from_api != missing_way:
+            flags.append("nearest_osm_source_inconsistent")  # błąd danych, raportowany
+        return SignRoadContext(
+            photo_id, way_id, raw, "unknown", None, "outside_snapshot", None, tuple(flags), oneway
+        )
+
+    directed = None
+    compass = _text(sign, "compass_angle")
+    if compass:
+        point = Point(*to_2180_xy(float(_text(sign, "longitude")), float(_text(sign, "latitude"))))
+        directed, _ = angle_diffs(float(compass), local_bearing(index.lines.loc[way_id], point))
+
+    if "maxspeed:forward" in raw or "maxspeed:backward" in raw:
+        if directed is None or 45.0 < directed < 135.0:
+            return SignRoadContext(
+                photo_id,
+                way_id,
+                raw,
+                "unknown",
+                None,
+                "direction_unknown",
+                directed,
+                tuple(flags),
+                oneway,
+            )
+        direction = "forward" if directed <= 45.0 else "backward"
+        value_raw = raw.get(f"maxspeed:{direction}") or raw.get("maxspeed", "")
+    else:
+        direction = "both"
+        value_raw = raw.get("maxspeed", "")
+
+    parsed = parse_maxspeed(value_raw)
+    if parsed is None:
+        status, value = "missing", None
+    elif parsed[0] != "numeric":
+        status, value = "not_numeric", None
+    else:
+        status, value = "ok", parsed[1]
+    return SignRoadContext(
+        photo_id, way_id, raw, direction, value, status, directed, tuple(flags), oneway
+    )
