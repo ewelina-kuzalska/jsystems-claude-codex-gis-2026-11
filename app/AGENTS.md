@@ -13,6 +13,10 @@ Lokalne zasady dla agentów pracujących w `app/`. Ogólne reguły są w `../AGE
 - Z `app/`: `uv run map-qa run --input ../course-materials/exercise-data/map-qa --output ../reports/map-qa/runs`.
 - Na Windows przy przekierowaniu wyjścia do pliku ustaw `PYTHONUTF8=1`.
 
+## Snapshot z CRLF (Windows, `core.autocrlf=true`)
+- Hashe w `sources.json` dotyczą bajtów z gita (LF). Checkout z `autocrlf=true` zamienia LF→CRLF w plikach tekstowych snapshotu i `map-qa run` słusznie kończy się kodem 2 (AC-01). Nie osłabiaj tej kontroli.
+- Wierna kopia do testów i QA: `git -c core.autocrlf=false archive HEAD course-materials/exercise-data/map-qa | tar -x -C <katalog>`, potem `MAP_QA_REAL_INPUT=<katalog>/course-materials/exercise-data/map-qa` (testy na pełnym snapshocie) albo `--input` (CLI).
+
 ## Zasady
 - Piny `==` w `pyproject.toml`; zmiana wersji tylko osobnym commitem po sprawdzeniu dokumentacji (ADR-000 §2).
 - Wejścia w `course-materials/exercise-data/map-qa/` są tylko do odczytu. Testy piszą wyłącznie do `tmp_path`.
