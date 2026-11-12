@@ -1,7 +1,7 @@
 # ADR-006: Modele C4 (Jev, Luna Decisions, Luna LLM) i testy na prawdziwych endpointach
 
 **Data:** 2026-11-12
-**Status:** Accepted (decyzja użytkownika). Identyfikatory modeli oznaczone ⏳ potwierdza pierwsze prawdziwe wywołanie (zadanie T00b w planie)
+**Status:** Accepted (decyzja użytkownika). ID modeli: `typesafe/jev-1.14` (domyślny krok 1), `openai/gpt-6-luna-decisions` (opcjonalny krok 1), `openai/gpt-6-luna` (krok 2). Pierwsze prawdziwe wywołanie (T00b) potwierdza przyjęcie żądań, kształt obrazu, typy pytań i opóźnienie
 **Supersedes:** [ADR-000](000-main-architecture.md) D-03 i D-04
 **Relates to:** [ADR-003](003-ai-sign-reading.md), [PRD AC-20–AC-28](../PRD.md)
 
@@ -22,15 +22,17 @@
   | Luna LLM | `openai/gpt-6-luna` | text, image, file | 0,10 / 0,50 | `reasoning`, `response_format`, `structured_outputs` |
   | Luna LLM Pro (niewybrana) | `openai/gpt-6-luna-pro` | text, image, file | 0,10 / 0,50 | jak wyżej |
   | Jev (router) | `typesafe/jev-router` | audio, file, image, text, video | cena dynamiczna (`-1`) | `reasoning`, `response_format`, `structured_outputs` |
-  | Luna Decisions | `openai/gpt-6-luna-decisions` ⏳ | — | — | **brak w publicznym katalogu** |
-  | Jev 1.14 | `typesafe/jev-1.14` ⏳ | — | — | **brak w publicznym katalogu** |
+  | Luna Decisions | `openai/gpt-6-luna-decisions` | text, image | **0,10 / 0** (kontekst 1,1 mln) | Decisions API; brak w `/api/v1/models`, dane z karty modelu https://openrouter.ai/openai/gpt-6-luna-decisions |
+  | Jev 1.14 | `typesafe/jev-1.14` | text, image | **0,042 / 0** (kontekst 262 tys.) | Decisions API; brak w `/api/v1/models`, dane z karty modelu https://openrouter.ai/typesafe/jev-1.14 |
+
+  Ceny i kontekst modeli decyzyjnych pochodzą z kart modeli przekazanych przez prowadzącego (2026-11-12). Wyjście modeli decyzyjnych jest bezpłatne. Opóźnienie, obsługiwane typy pytań i rzeczywisty koszt (`usage.cost`) mierzy T00b.
 
 - **Wycinki znaków:** 108 ze 119 ma krótszy bok poniżej 256 px (min 49, mediana 130, max 1536 px). Według ADR-000 D-03 Jev wymaga co najmniej 256 px na bok.
 
 ## 2. Decyzje
 
 ### D-601: Krok 1 z wyborem modelu decyzyjnego
-- Nowa opcja CLI `--tier1-model {luna-decisions,jev}`, domyślnie `luna-decisions`. Oba modele działają przez Decisions API (`POST /api/alpha/decisions`) z tym samym pytaniem `choice` (ADR-003 §3.3).
+- Nowa opcja CLI `--tier1-model {jev,luna-decisions}`, **domyślnie `jev`** (`typesafe/jev-1.14`; decyzja prowadzącego/użytkownika 2026-11-12: „Model decyzyjny: typesafe/jev-1.14, opcjonalnie zamiast Jev: openai/gpt-6-luna-decisions”). Jev jest też ponad 2× tańszy na wejściu (0,042 wobec 0,10 USD za mln tokenów). Oba modele działają przez Decisions API (`POST /api/alpha/decisions`) z tym samym pytaniem `choice` (ADR-003 §3.3).
 - Klucz cache zawiera `model_id`, więc wyniki obu modeli współistnieją (ADR-003 §3.7).
 - Raport pokazuje accuracy osobno per model kroku 1 (AC-28 per tier **i** per model).
 - **Porównanie** to osobne uruchomienia z różnym `--tier1-model` na tej samej próbce. Każde mieści się w limicie 25 żądań. Nie ma trybu „oba modele w jednym uruchomieniu”, żeby nie łamać AC-23.
@@ -69,4 +71,5 @@
 ## 5. Review trigger
 - Accuracy kroku 2 nie lepsze niż kroku 1 na eskalowanych wycinkach → rozważyć model innej rodziny.
 - Jev przyjmuje obrazy < 256 px (T00b) → usunąć D-603.
-- Luna Decisions albo Jev 1.14 pojawiają się w publicznym katalogu z ceną → uzupełnić tabelę i limit kosztu.
+- Koszt lub opóźnienie zmierzone w T00b odbiegają od kart modeli → uzupełnić tabelę i limit kosztu.
+- Jev ma accuracy niższe niż Luna Decisions na tej samej próbce (porównanie z D-601) → rozważyć zmianę domyślnego modelu.

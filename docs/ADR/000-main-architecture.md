@@ -96,7 +96,7 @@ Jednoprocesowy monolit CLI z potokiem etapów (pipeline). Każdy etap to czysta 
 | Runtime | Python 3.12 + uv | Wymóg kursu, powtarzalne środowisko przez `uv.lock` |
 | Odczyt i struktury | DuckDB 2.0 (in-process) | Natywny GeoParquet, `UNNEST` list struktur Overture, `json_extract` tagów OSM |
 | Geometria i CRS | GeoPandas + Shapely + pyproj | Jawne `always_xy`, łatwe testy jednostkowe, sprawdzony eksport GeoJSON |
-| AI krok 1 | `openai/gpt-6-luna-decisions` **albo** Jev (`typesafe/jev-1.14`) przez OpenRouter Decisions, wybór `--tier1-model` | ADR-006 D-601 |
+| AI krok 1 | **Jev `typesafe/jev-1.14` (domyślnie)** albo `openai/gpt-6-luna-decisions`, przez OpenRouter Decisions, wybór `--tier1-model` | ADR-006 D-601 |
 | AI krok 2 | `openai/gpt-6-luna` (Luna LLM) przez OpenRouter chat completions, `reasoning.effort = medium` | ADR-006 D-602 |
 | Klient HTTP | httpx, surowy POST | Jawny timeout, zero ponowień, prosty mock |
 | Raport | Jinja2 + autoescape | Bezpieczne escapowanie danych źródłowych |

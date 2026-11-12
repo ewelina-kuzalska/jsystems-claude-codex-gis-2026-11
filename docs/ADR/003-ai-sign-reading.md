@@ -67,7 +67,7 @@ Pierwsze prawdziwe wywołania mają te fakty zmierzyć i zapisać w sekcji 9.
 - **Endpoint:** `POST https://openrouter.ai/api/alpha/decisions`.
 - **Nagłówki:** `Authorization: Bearer <OPENROUTER_API_KEY>`, `Content-Type: application/json`. Brak `session_id`, `user`, `trace` i `x-session-id`, żeby nie przekazywać identyfikatorów.
 - **Ciało żądania:**
-  - `model`: `openai/gpt-6-luna-decisions` albo `typesafe/jev-1.14`, zależnie od `--tier1-model` (ADR-006 D-601). Jev dostaje obraz powiększony według ADR-006 D-603.
+  - `model`: `typesafe/jev-1.14` (domyślnie) albo `openai/gpt-6-luna-decisions`, zależnie od `--tier1-model` (ADR-006 D-601). Jev dostaje obraz powiększony według ADR-006 D-603.
   - `state`: tablica dwóch elementów:
     - neutralny tekst „An image crop from a street-level photograph.” (stała `STATE_TEXT_V1`),
     - obraz w kształcie `{type: image_url, image_url: {url: <data URL>}}`.
