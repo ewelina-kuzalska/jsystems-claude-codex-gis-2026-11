@@ -2,7 +2,7 @@
 
 **Data:** 2026-11-03
 **Aktualizacja:** 2026-11-12, ustalenia z profilu M2 ([`reports/map-qa/profile.md`](../../reports/map-qa/profile.md)): mapowanie etykiet po `sign_value`, brak metadanych w wycinkach, wszystkie wartości etykiet w opcjach kroku 1, pochodzenie etykiet (zgodność dwóch modeli), znaki spoza snapshotu
-**Status:** Accepted
+**Status:** Accepted. Modele i zasady testów na prawdziwych endpointach zmienia [ADR-006](006-c4-models-and-real-endpoint-testing.md) (2026-11-12). Gdzie ten ADR wymienia `openai/gpt-6-luna-decisions` jako jedyny krok 1 albo `anthropic/claude-haiku-5.5` jako krok 2, obowiązuje ADR-006
 **Relates to:** [`000-main-architecture.md`](000-main-architecture.md)
 
 ---
@@ -67,7 +67,7 @@ Pierwsze prawdziwe wywołania mają te fakty zmierzyć i zapisać w sekcji 9.
 - **Endpoint:** `POST https://openrouter.ai/api/alpha/decisions`.
 - **Nagłówki:** `Authorization: Bearer <OPENROUTER_API_KEY>`, `Content-Type: application/json`. Brak `session_id`, `user`, `trace` i `x-session-id`, żeby nie przekazywać identyfikatorów.
 - **Ciało żądania:**
-  - `model`: `openai/gpt-6-luna-decisions`.
+  - `model`: `openai/gpt-6-luna-decisions` albo `typesafe/jev-1.14`, zależnie od `--tier1-model` (ADR-006 D-601). Jev dostaje obraz powiększony według ADR-006 D-603.
   - `state`: tablica dwóch elementów:
     - neutralny tekst „An image crop from a street-level photograph.” (stała `STATE_TEXT_V1`),
     - obraz w kształcie `{type: image_url, image_url: {url: <data URL>}}`.
@@ -91,7 +91,7 @@ Pierwsze prawdziwe wywołania mają te fakty zmierzyć i zapisać w sekcji 9.
 ### 3.4 Krok 2: ogólny LLM
 - **Endpoint:** `POST https://openrouter.ai/api/v1/chat/completions`, z tymi samymi nagłówkami.
 - **Ciało żądania:**
-  - `model`: `anthropic/claude-haiku-5.5`.
+  - `model`: `openai/gpt-6-luna` (ADR-006 D-602; pierwotnie `anthropic/claude-haiku-5.5`).
   - `messages`: jedna wiadomość `user` o treści:
     - tekst `QUESTION_V1` plus „Answer with JSON only.”,
     - obraz `image_url` z tym samym data URL.
@@ -405,6 +405,9 @@ sequenceDiagram
 ## 8. Strategia testów
 
 ### Zasada mocków (obowiązkowa)
+
+Uzupełnienie z ADR-006 D-604: zapisy dla wszystkich trzech modeli (Luna Decisions, Jev, Luna LLM) robimy **przed** implementacją parsera i są z góry zatwierdzone przez użytkownika. Testy manualne i E2E wołają prawdziwe endpointy (marker `live_api`). Poniższe kroki 1–6 obowiązują nadal, ale „zgoda użytkownika” jest już udzielona.
+
 1. **Zapis odpowiedzi kroku 1:** przed testami integracyjnymi `ai_client` wykonujemy jedno prawdziwe żądanie kroku 1, po zgodzie użytkownika, w ramach limitu. Zapisujemy je jako `CapturedFixture` w `app/tests/fixtures/openrouter/tier1-<data>.json`:
    - status, dozwolone nagłówki i ciało bez zmian,
    - streszczenie żądania bez obrazu i bez `Authorization`,

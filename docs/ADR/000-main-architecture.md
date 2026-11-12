@@ -29,6 +29,7 @@ ADR-y:
 | [`003-ai-sign-reading.md`](003-ai-sign-reading.md) | Kontrakt modeli, eskalacja, budżet, cache, C4 |
 | [`004-report-export.md`](004-report-export.md) | Raport Markdown/HTML, GeoJSON, CSV, atrybucje |
 | [`005-cli-working-directory.md`](005-cli-working-directory.md) | Katalog roboczy CLI, ścieżki domyślne, uruchamianie z korzenia repo |
+| [`006-c4-models-and-real-endpoint-testing.md`](006-c4-models-and-real-endpoint-testing.md) | Modele C4 (Jev / Luna Decisions, Luna LLM), testy na prawdziwych endpointach. **Zastępuje D-03 i D-04** |
 
 **Warunki wstępne:**
 - Profil danych (krok M2) jest w [`reports/map-qa/profile.md`](../../reports/map-qa/profile.md) (2026-11-12). Punkty, które ADR oznaczał jako „do potwierdzenia w profilu”, rozstrzygnięto w ADR-001–003 (aktualizacja 2026-11-12). Tabela rozstrzygnięć jest w §6 profilu.
@@ -49,6 +50,7 @@ Wersje i identyfikatory sprawdzono 2026-11-03 (PyPI JSON, Context7 CLI, strony d
 | GeoPandas | `/geopandas/geopandas`, `/websites/geopandas_en_stable` | `geopandas==1.2.0` | Ramki geometrii, `to_crs`, zapytania przestrzenne, eksport GeoJSON |
 | Shapely | `/shapely/shapely` | `shapely==2.2.0` | Odległość punkt–linia, `line_locate_point`, interpolacja |
 | pyproj | `/pyproj4/pyproj`, `/websites/pyproj4_github_io_pyproj_stable` | `pyproj==3.8.0` | `Transformer` z `always_xy=True`, `Geod` do azymutu geodezyjnego |
+| Pillow | https://pillow.readthedocs.io/ | `pillow==12.0.0` | Powiększenie wycinków tylko dla Jev (ADR-006 D-603) |
 | pyarrow | https://arrow.apache.org/docs/python/ | `pyarrow==23.0.1` | Silnik Parquet dla GeoPandas (pin zgodny z README danych map-qa) |
 | httpx | https://www.python-httpx.org/ | `httpx==0.28.1` | Surowe wywołania OpenRouter |
 | OpenRouter Decisions API | `/websites/openrouter_ai`; https://openrouter.ai/docs/api/api-reference/alphadecisions/submit-a-decisions-request | alpha | Krok 1 (model decyzyjny) |
@@ -94,8 +96,8 @@ Jednoprocesowy monolit CLI z potokiem etapów (pipeline). Każdy etap to czysta 
 | Runtime | Python 3.12 + uv | Wymóg kursu, powtarzalne środowisko przez `uv.lock` |
 | Odczyt i struktury | DuckDB 2.0 (in-process) | Natywny GeoParquet, `UNNEST` list struktur Overture, `json_extract` tagów OSM |
 | Geometria i CRS | GeoPandas + Shapely + pyproj | Jawne `always_xy`, łatwe testy jednostkowe, sprawdzony eksport GeoJSON |
-| AI krok 1 | `openai/gpt-6-luna-decisions` przez OpenRouter Decisions | Pytanie `choice` zwraca mapę `probabilities` pod próg 0,7 |
-| AI krok 2 | `anthropic/claude-haiku-5.5` przez OpenRouter chat completions, `reasoning.effort = medium` | Inna rodzina niż krok 1, najtańszy kandydat z obrazem, rozumowaniem i JSON schema |
+| AI krok 1 | `openai/gpt-6-luna-decisions` **albo** Jev (`typesafe/jev-1.14`) przez OpenRouter Decisions, wybór `--tier1-model` | ADR-006 D-601 |
+| AI krok 2 | `openai/gpt-6-luna` (Luna LLM) przez OpenRouter chat completions, `reasoning.effort = medium` | ADR-006 D-602 |
 | Klient HTTP | httpx, surowy POST | Jawny timeout, zero ponowień, prosty mock |
 | Raport | Jinja2 + autoescape | Bezpieczne escapowanie danych źródłowych |
 | CLI | Typer | Opcje z typami, potwierdzenie, ścieżka nieinteraktywna `--yes` do testów |
@@ -235,7 +237,7 @@ Databricks (`DATABRICKS_HOST`, `DATABRICKS_TOKEN`, identyfikator warehouse) nie 
 **Review trigger:** PRD dodaje odświeżanie danych albo nowe obszary.
 
 ### D-03: Krok 1 to `openai/gpt-6-luna-decisions`
-**Status:** Accepted
+**Status:** Superseded by [ADR-006](006-c4-models-and-real-endpoint-testing.md) D-601 (2026-11-12)
 **Data:** 2026-11-03
 **Context:**
 - Potrzebujemy zamkniętego zbioru odpowiedzi z prawdopodobieństwami.
@@ -256,7 +258,7 @@ Databricks (`DATABRICKS_HOST`, `DATABRICKS_TOKEN`, identyfikator warehouse) nie 
 **Review trigger:** accuracy kroku 1 poniżej 60% na ocenionych wycinkach albo koszt powyżej 0,02 USD na żądanie.
 
 ### D-04: Krok 2 to `anthropic/claude-haiku-5.5`, reasoning medium
-**Status:** Accepted
+**Status:** Superseded by [ADR-006](006-c4-models-and-real-endpoint-testing.md) D-602 (2026-11-12)
 **Data:** 2026-11-03
 **Context:** PRD wymaga ogólnego multimodalnego LLM ze średnim poziomem rozumowania. Otwarte pytanie z PRD dotyczyło tego, czy ma to być inna rodzina modeli niż w kroku 1.
 
@@ -483,7 +485,7 @@ sequenceDiagram
 |---|---|---|---|
 | Unit | Czyste funkcje | Parser `maxspeed`, reguły Overture, rodziny nawierzchni, CRS, azymut, eskalacja, `task_id`, escapowanie | pytest |
 | Integration | Moduł z I/O | Odczyt DuckDB na fixture'ach GeoParquet, cache na dysku (tmp), `ai_client` z pytest-httpx i zapisanymi odpowiedziami, render z syrupy | pytest, pytest-httpx, syrupy |
-| E2E | Prawdziwe CLI, bez mocków | `map-qa run` bez C4 na pełnym snapshocie; z C4 tylko na cache (zero nowych żądań) | pytest + subprocess, ręczna kontrola HTML |
+| E2E | Prawdziwe CLI, bez mocków | `map-qa run` bez C4 na pełnym snapshocie; z C4 na **prawdziwych endpointach** (marker `live_api`, świeży cache w `tmp_path`), potem powtórka na tym cache z zerem nowych żądań (ADR-006 D-604) | pytest + subprocess, ręczna kontrola HTML |
 
 ### Kluczowe scenariusze (całość; szczegóły w ADR 001–004)
 - **Manifest:** zgodne hashe dają start. Zmieniony bajt w kopii pliku daje kod 2 i brak wyników (AC-01).
