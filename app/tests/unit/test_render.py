@@ -159,3 +159,77 @@ def test_strict_undefined(tmp_path):
 def test_empty_manual_queue_text(out):
     html, _ = out
     assert "Żaden znak nie wymaga ręcznej kontroli" in html
+
+
+def test_c4_block_and_manual_queue(tmp_path):
+    cands = [
+        Candidate(
+            check="C4",
+            reason_code="sign_mismatch",
+            osm_id=7,
+            photo_id="s1",
+            photo_ids=("s1",),
+            photo_url="https://www.mapillary.com/app/?pKey=1",
+            photo_author="autor",
+            photo_license="CC-BY-SA-4.0",
+            resolved_by="general_llm",
+            tier1_model="typesafe/jev-1.14",
+            tier1_answer="unreadable",
+            tier1_probability=0.8,
+            tier2_answer="50",
+            tier2_confidence=0.9,
+            mapillary_value="regulatory--maximum-speed-limit-50--g1",
+            extra={"osm_speed_tags": "maxspeed=70"},
+            geometry=Point(19.9, 50.0),
+        ),
+        Candidate(
+            check="C4-manual",
+            reason_code="below_threshold",
+            photo_id="s2",
+            photo_ids=("s2",),
+            photo_url="https://www.mapillary.com/app/?pKey=2",
+            photo_author="autor2",
+            photo_license="CC-BY-SA-4.0",
+            resolved_by="human_pending",
+            tier1_answer="50",
+            tier1_probability=0.3,
+            tier2_answer="40",
+            tier2_confidence=0.4,
+            geometry=Point(19.9, 50.0),
+        ),
+    ]
+    block = {
+        "status": "run",
+        "tier1_model": "typesafe/jev-1.14",
+        "tier2_model": "openai/gpt-6-luna",
+        "threshold": 0.7,
+        "limit": 25,
+        "requests": {"tier1": 2, "tier2": 2},
+        "cached": {"tier1": 0, "tier2": 0},
+        "cost_text": "0,0002",
+        "processed": 2,
+        "sample_total": 119,
+        "resolved": {"decision_model": 0, "general_llm": 1, "human_pending": 1, "not_run": 117},
+        "stop_text": "nie zatrzymano",
+        "accuracy": [
+            {"label": "Krok 1 — ostateczne (typesafe/jev-1.14)", "correct": 0, "evaluated": 0}
+        ],
+        "evaluation_note": "Mianownik: etykiety certain.",
+        "manual_by_reason": {"below_threshold": 1},
+    }
+    ri = report_input(
+        cands=cands,
+        c4=block,
+        images={"s1#crop": ImageRef("images/s1_crop.jpg"), "s2#crop": ImageRef(None)},
+    )
+    ctx = build_context(ri)
+    render_html(ctx, tmp_path / "r.html")
+    render_markdown(ctx, tmp_path / "r.md")
+    html = (tmp_path / "r.html").read_text(encoding="utf-8")
+    md = (tmp_path / "r.md").read_text(encoding="utf-8")
+    assert "Zgodność z roboczą referencją" in html and "typesafe/jev-1.14" in html
+    assert 'src="images/s1_crop.jpg"' in html
+    assert "Żaden znak nie wymaga ręcznej kontroli" not in html
+    assert "below_threshold" in html and "40 (0,40)" in html  # podpowiedzi z obu kroków
+    assert 'data-check="C4-manual" data-count="1"' in html
+    assert "| C4-manual | 1 |" in md and "unreadable (0,80)" in md
