@@ -122,7 +122,7 @@ Pierwsze prawdziwe wywołania mają te fakty zmierzyć i zapisać w sekcji 9.
   - Limit to `max_requests` (1–25, domyślnie 25). Trafienie w cache nie zwiększa licznika.
   - Przed żądaniem sprawdzamy, czy licznik < limit. Jeśli nie, ten i wszystkie pozostałe nierozstrzygnięte wycinki dostają `budget_exhausted` i trafiają do kolejki ręcznej.
 - **Limit kosztu:**
-  - `--max-cost-usd`, domyślnie 0,50 USD. Sumujemy `usage.cost` z odpowiedzi.
+  - `--max-cost-usd`, domyślnie 0,50 USD. Sumujemy `usage.cost` z odpowiedzi, a przy kluczu BYOK (`usage.is_byok = true`) także `usage.cost_details.upstream_inference_cost` (ADR-006 §5, T00b).
   - Przed każdym żądaniem: jeśli suma + największy dotąd zaobserwowany koszt jednego żądania tego kroku > limit, zwracamy `budget_exhausted`.
   - Brak `usage.cost` w odpowiedzi jest odnotowany jako `cost_unknown`. Wtedy działa tylko limit żądań, a raport to pokazuje.
 - **Plan przed potwierdzeniem** (AC-23): liczba nowych żądań kroku 1, najgorszy przypadek kroku 2 (= liczba nowych żądań kroku 1), limit, próg i limit kosztu.
@@ -450,11 +450,13 @@ Uzupełnienie z ADR-006 D-604: zapisy dla wszystkich trzech modeli (Luna Decisio
 
 ---
 
-## 9. Pomiary do uzupełnienia po pierwszym prawdziwym uruchomieniu
+## 9. Pomiary (T00b, 2026-11-12; szczegóły w ADR-006 §5)
 
-| Pomiar | Krok 1 (Luna) | Krok 2 (Haiku 5.5) |
-|---|---|---|
-| Koszt na żądanie (`usage.cost`, USD) | do zmierzenia | do zmierzenia |
-| Mediana czasu odpowiedzi (s) | do zmierzenia | do zmierzenia |
-| Przyjęty kształt obrazu | do potwierdzenia (`state` data URL) | `messages` `image_url` |
-| Data i liczba żądań pomiaru | — | — |
+| Pomiar | Krok 1 Jev 1.14 | Krok 1 Luna Decisions | Krok 2 Luna LLM |
+|---|---|---|---|
+| Koszt na żądanie (USD) | ok. 0,00004 (`upstream_inference_cost`, BYOK) | ok. 0,00004 | 0,00005–0,00012 |
+| Czas odpowiedzi (s) | 0,36–0,55 | 0,67–0,95 | 2,9–4,4 |
+| Przyjęty kształt obrazu | `state`: `{type: image_url, image_url: {url: data:image/png;base64,…}}` po `JEV_RESIZE_V1` | `state`: data URL JPEG, oryginalne bajty | `messages[0].content[1]`: `image_url` |
+| Data i liczba żądań pomiaru | 2026-11-12: 2 × 200, 2 × 400 (rozmiar) | 2026-11-12: 2 × 200 | 2026-11-12: 2 × 200 |
+
+Pomiary z pełnego uruchomienia C4 (T28) uzupełniają ADR-006 §5.

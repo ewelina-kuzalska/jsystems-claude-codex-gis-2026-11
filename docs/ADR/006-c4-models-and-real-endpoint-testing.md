@@ -1,7 +1,7 @@
 # ADR-006: Modele C4 (Jev, Luna Decisions, Luna LLM) i testy na prawdziwych endpointach
 
 **Data:** 2026-11-12
-**Status:** Accepted (decyzja użytkownika). ID modeli: `typesafe/jev-1.14` (domyślny krok 1), `openai/gpt-6-luna-decisions` (opcjonalny krok 1), `openai/gpt-6-luna` (krok 2). Pierwsze prawdziwe wywołanie (T00b) potwierdza przyjęcie żądań, kształt obrazu, typy pytań i opóźnienie
+**Status:** Accepted (decyzja użytkownika). ID modeli: `typesafe/jev-1.14` (domyślny krok 1), `openai/gpt-6-luna-decisions` (opcjonalny krok 1), `openai/gpt-6-luna` (krok 2). **T00b (2026-11-12) potwierdził** przyjęcie żądań dla wszystkich trzech ID, kształt obrazu w `state` (`image_url` z data URL), pytanie `choice` i opóźnienie (§6)
 **Supersedes:** [ADR-000](000-main-architecture.md) D-03 i D-04
 **Relates to:** [ADR-003](003-ai-sign-reading.md), [PRD AC-20–AC-28](../PRD.md)
 
@@ -43,10 +43,10 @@
 
 ### D-603: Obraz dla Jev
 - Luna Decisions i Luna LLM dostają **oryginalne bajty** wycinka, jak dotąd (D-304).
-- Jev dostaje wycinek **deterministycznie powiększony** tak, żeby krótszy bok miał 256 px: Pillow 12.0.0 (już używany przez skrypty danych), filtr `LANCZOS`, zapis PNG bez metadanych. Wycinki, które już mają ≥ 256 px, idą bez zmian.
-- Kontrola fail-closed (hash z `signs.csv`, format, brak EXIF) działa na **oryginale**, przed powiększeniem. Klucz cache i streszczenie żądania zawierają SHA-256 **wysłanych** bajtów oraz wersję transformacji `JEV_UPSCALE_V1`.
+- Jev dostaje wycinek **deterministycznie przeskalowany** (`JEV_RESIZE_V1`) tak, żeby spełnić limity TypeSafe: każdy bok **280–1568 px** i łącznie **78 400–2 458 624 px** (https://docs.typesafe.ai/images, sekcja „Limits”). Skala `s` to najmniejsza wartość ≥ 1 spełniająca minima (powiększenie, boki zaokrąglane w górę) albo największa wartość < 1 spełniająca maksima (zmniejszenie, boki zaokrąglane w dół). Pillow 12.0.0, filtr `LANCZOS`, zapis PNG bez metadanych. Wycinki, które już mieszczą się w limitach, idą bez zmian.
+- Kontrola fail-closed (hash z `signs.csv`, format, brak EXIF) działa na **oryginale**, przed skalowaniem. Klucz cache i streszczenie żądania zawierają SHA-256 **wysłanych** bajtów oraz wersję transformacji `JEV_RESIZE_V1`.
 - Pillow staje się zależnością aplikacji (`pillow==12.0.0`). To zmienia D-304 tylko dla ścieżki Jev.
-- ⏳ Wymóg 256 px pochodzi z dokumentacji z 2026-11-03. Pierwsze prawdziwe wywołanie (T00b) sprawdza, czy Jev przyjmuje wycinek < 256 px. Jeśli tak, D-603 upraszczamy do oryginalnych bajtów.
+- ✅ **Zweryfikowane w T00b (2026-11-12):** oryginał 175×172 i powiększenie do 283×278 (minimum 256 px z przewodnika OpenRouter) dają `400 Invalid image dimensions`. Powiększenie do 285×280 daje 200. Przewodnik OpenRouter podaje 256 px, ale obowiązuje 280 px z dokumentacji TypeSafe. 6 ze 119 wycinków ma dłuższy bok 2048 px (> 1568), więc `JEV_RESIZE_V1` także zmniejsza. Zapisy: `app/tests/fixtures/openrouter/jev-small-original.json`, `jev-283x278-rejected.json`, `tier1-jev-*.json`.
 
 ### D-604: Testy na prawdziwych endpointach (zasada obowiązująca w całym projekcie)
 - **Testy manualne i E2E wołają prawdziwe endpointy** Jev, Luny Decisions i Luny LLM. E2E dla C4 to dwa uruchomienia na świeżym katalogu cache w `tmp_path`: pierwsze z prawdziwymi żądaniami (w limicie aplikacji), drugie na tym samym cache z zerem nowych żądań (AC-26).
@@ -68,8 +68,20 @@
 - (−) Nowa zależność Pillow i transformacja obrazu dla Jev.
 - (−) Testy `live_api` zależą od sieci i dostępności dostawcy, więc są wykluczone z domyślnego zestawu.
 
-## 5. Review trigger
+## 5. Pomiary T00b (2026-11-12, 9 żądań, z czego 7 płatnych)
+
+| Model | Odpowiedź (`model`) | Czas (s) | Koszt na żądanie (USD) | Uwagi |
+|---|---|---|---|---|
+| Jev 1.14 | `typesafe/jev-1.14-20261014` | 0,36–0,55 | ok. 0,00004 | Obraz w `state` jako `image_url` (data URL PNG); ok. 950 tokenów wejścia |
+| Luna Decisions | `openai/gpt-6-luna-decisions-20261006` | 0,67–0,95 | ok. 0,00004 | Oryginalny JPEG; ok. 400 tokenów wejścia, 0 wyjścia |
+| Luna LLM | `openai/gpt-6-luna` (dostawca Azure) | 2,9–4,4 | 0,00005–0,00012 | `json_schema` strict przyjęty; treść poprzedzona białymi znakami (keep-alive) |
+
+- **Koszt przy kluczu BYOK:** odpowiedzi mają `usage.is_byok = true` i `usage.cost = 0`, a rzeczywisty koszt jest w `usage.cost_details.upstream_inference_cost`. Licznik kosztu (ADR-003 §3.6) sumuje `usage.cost` **plus** `usage.cost_details.upstream_inference_cost`, gdy `is_byok = true`. Brak obu pól daje `cost_unknown`.
+- 401 bez klucza: `{"error":{"message":"No cookie auth credentials found","code":401}}`.
+- Na wycinku trudnym (etykieta `unreadable`) Jev odpowiedział `50` z p = 0,84, Luna Decisions `unreadable`, a Luna LLM `30` z pewnością 0,38. Jev może więc dawać pewne odpowiedzi na nieczytelnych wycinkach; porównanie modeli w T28.
+
+## 6. Review trigger
 - Accuracy kroku 2 nie lepsze niż kroku 1 na eskalowanych wycinkach → rozważyć model innej rodziny.
-- Jev przyjmuje obrazy < 256 px (T00b) → usunąć D-603.
+- Jev zacznie przyjmować obrazy < 280 px → uprościć D-603.
 - Koszt lub opóźnienie zmierzone w T00b odbiegają od kart modeli → uzupełnić tabelę i limit kosztu.
 - Jev ma accuracy niższe niż Luna Decisions na tej samej próbce (porównanie z D-601) → rozważyć zmianę domyślnego modelu.
