@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
 
 APP_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = APP_DIR.parent
-REAL_INPUT = REPO_ROOT / "course-materials" / "exercise-data" / "map-qa"
+REAL_INPUT = Path(
+    os.environ.get("MAP_QA_REAL_INPUT")
+    or REPO_ROOT / "course-materials" / "exercise-data" / "map-qa"
+)
 FIXTURES = APP_DIR / "tests" / "fixtures"
 
 
