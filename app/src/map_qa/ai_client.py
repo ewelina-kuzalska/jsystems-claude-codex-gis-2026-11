@@ -29,8 +29,8 @@ TIER2_MODEL = "openai/gpt-6-luna"
 DEADLINE_S = 40.0
 TIMEOUT = httpx.Timeout(connect=5.0, read=DEADLINE_S, write=5.0, pool=5.0)
 
-# Dopóki parser nie przeszedł testów na zapisach T00b, C4 nie wysyła żądań (ADR-003 §3.6).
-RESPONSE_CONTRACT_VERIFIED = False
+# Parser przeszedł testy na zapisach T00b (tests/integration/test_ai_client.py, ADR-003 §3.6).
+RESPONSE_CONTRACT_VERIFIED = True
 
 STATE_TEXT_V1 = "An image crop from a street-level photograph."
 QUESTION_V1 = (
@@ -240,3 +240,182 @@ class OpenRouterClient:
             raise ModelUnavailable("timeout", type(exc).__name__) from exc
         except httpx.HTTPError as exc:
             raise ModelUnavailable("network_error", type(exc).__name__) from exc
+
+
+# --- Interpretacja odpowiedzi (kontrakt z zapisów T00b, ADR-003 §3.3–3.4) ------------------
+
+
+def _cost(body: dict) -> float | None:
+    """`usage.cost`, a przy kluczu BYOK także `cost_details.upstream_inference_cost`."""
+    usage = body.get("usage") or {}
+    cost = usage.get("cost")
+    upstream = (usage.get("cost_details") or {}).get("upstream_inference_cost")
+    if cost is None and upstream is None:
+        return None
+    total = float(cost or 0.0)
+    if usage.get("is_byok") and upstream is not None:
+        total += float(upstream)
+    return total
+
+
+def _json(text: str) -> dict:
+    try:
+        data = json.loads(text)
+    except ValueError as exc:
+        raise ModelUnavailable("invalid_response", "odpowiedź nie jest JSON") from exc
+    if not isinstance(data, dict):
+        raise ModelUnavailable("invalid_response", "odpowiedź nie jest obiektem JSON")
+    return data
+
+
+def _prob(value) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 1:
+        raise ModelUnavailable("invalid_response", f"prawdopodobieństwo poza 0–1: {value!r}")
+    return float(value)
+
+
+def interpret_tier1(text: str) -> dict:
+    body = _json(text)
+    answer = (body.get("answers") or {}).get("b33_value") or {}
+    choice = answer.get("choice")
+    probs = answer.get("probabilities")
+    if choice not in TIER1_OPTIONS or not isinstance(probs, dict) or choice not in probs:
+        raise ModelUnavailable("invalid_response", f"choice={choice!r}")
+    probabilities = {str(k): _prob(v) for k, v in probs.items()}
+    return {
+        "answer": choice,
+        "probability": probabilities[choice],
+        "probabilities": probabilities,
+        "confidence": answer.get("confidence"),
+        "cost_usd": _cost(body),
+        "model": body.get("model"),
+    }
+
+
+def interpret_tier2(text: str) -> dict:
+    body = _json(text)
+    try:
+        content = body["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise ModelUnavailable("invalid_response", "brak choices[0].message.content") from exc
+    data = _json(content.strip() if isinstance(content, str) else "")
+    if set(data) != {"answer", "value_kmh", "confidence"}:
+        raise ModelUnavailable("invalid_response", f"pola: {sorted(data)}")
+    answer, value = data["answer"], data["value_kmh"]
+    if answer not in TIER2_ANSWERS:
+        raise ModelUnavailable("invalid_response", f"answer={answer!r}")
+    if value is not None and (
+        isinstance(value, bool) or not isinstance(value, int) or not 5 <= value <= 140
+    ):
+        raise ModelUnavailable("invalid_response", f"value_kmh={value!r}")
+    confidence = _prob(data["confidence"])
+    if answer == "other_value":
+        if value is None or value % 5 != 0:
+            raise ModelUnavailable("invalid_response", f"other_value z value_kmh={value!r}")
+        answer = str(value)
+    return {
+        "answer": answer,
+        "probability": confidence,
+        "probabilities": None,
+        "cost_usd": _cost(body),
+        "model": body.get("model"),
+    }
+
+
+class SignReader:
+    """Czytnik kroków 1 i 2: budżet → żądanie → interpretacja → `SignReading` + wpis cache."""
+
+    def __init__(self, client: OpenRouterClient, tier1_model: str) -> None:
+        self.client = client
+        self.tier1_model = tier1_model
+
+    def model_for(self, tier: int) -> str:
+        return self.tier1_model if tier == 1 else TIER2_MODEL
+
+    def prepare(self, tier: int, crop_sha256: str, crop: bytes) -> tuple[bytes, str, str]:
+        """(wysyłane bajty, transformacja, klucz cache) — bez sieci."""
+        import hashlib
+
+        from map_qa.cache import cache_key
+
+        sent, transform = prepare_image(self.model_for(tier), crop)
+        key = cache_key(
+            crop_sha256=crop_sha256,
+            sent_sha256=hashlib.sha256(sent).hexdigest(),
+            tier=tier,
+            model_id=self.model_for(tier),
+            image_transform=transform,
+        )
+        return sent, transform, key
+
+    def read_tier1(self, photo_id: str, crop_sha256: str, crop: bytes, budget: RequestBudget):
+        return self._read(1, photo_id, crop_sha256, crop, budget)
+
+    def read_tier2(self, photo_id: str, crop_sha256: str, crop: bytes, budget: RequestBudget):
+        return self._read(2, photo_id, crop_sha256, crop, budget)
+
+    def _read(self, tier: int, photo_id: str, crop_sha256: str, crop: bytes, budget):
+        import datetime as dt
+        import hashlib
+
+        from map_qa.model import SignReading
+
+        sent, transform, key = self.prepare(tier, crop_sha256, crop)
+        model = self.model_for(tier)
+        body = build_tier1_body(model, sent) if tier == 1 else build_tier2_body(sent)
+        url = DECISIONS_URL if tier == 1 else CHAT_URL
+        budget.reserve(tier)  # licznik przed wysłaniem (AC-23)
+        raw = self.client.post_json(url, body)
+        if not 200 <= raw.status < 300:
+            raise ModelUnavailable(f"http_{raw.status}", raw.text[:500])
+        try:
+            interp = interpret_tier1(raw.text) if tier == 1 else interpret_tier2(raw.text)
+        except ModelUnavailable:
+            try:
+                budget.record_cost(tier, _cost(json.loads(raw.text)))
+            except ValueError:
+                budget.record_cost(tier, None)
+            raise
+        budget.record_cost(tier, interp["cost_usd"])
+        sent_sha = hashlib.sha256(sent).hexdigest()
+        reading = SignReading(
+            photo_id=photo_id,
+            crop_sha256=crop_sha256,
+            tier=tier,
+            model_id=model,
+            answer=interp["answer"],
+            probability=interp["probability"],
+            probabilities=interp["probabilities"],
+            request_outcome="ok",
+            cost_usd=interp["cost_usd"],
+            cache_key=key,
+            sent_sha256=sent_sha,
+            elapsed_s=raw.elapsed_s,
+        )
+        entry = {
+            "date": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
+            "endpoint": url,
+            "request_summary": {
+                "model": model,
+                "tier": tier,
+                "contract_versions": {
+                    "STATE_TEXT": "V1",
+                    "QUESTION": "V1",
+                    "SCHEMA": "V1",
+                    "IMAGE": transform,
+                },
+                "crop_sha256": crop_sha256,
+                "sent_image_sha256": sent_sha,
+            },
+            "status": raw.status,
+            "headers": raw.headers,
+            "body": raw.text,
+            "elapsed_s": raw.elapsed_s,
+            "interpretation": {
+                "answer": interp["answer"],
+                "probability": interp["probability"],
+                "probabilities": interp["probabilities"],
+                "cost_usd": interp["cost_usd"],
+            },
+        }
+        return reading, entry

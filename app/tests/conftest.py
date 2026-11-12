@@ -16,6 +16,16 @@ REAL_INPUT = Path(
 FIXTURES = APP_DIR / "tests" / "fixtures"
 
 
+def pytest_addoption(parser):
+    """`-p no:recording` (testy live_api, ADR-006 D-604) wyłącza wtyczkę, która definiuje
+    `--block-network` z `addopts`; wtedy rejestrujemy opcję jako nieaktywną, żeby polecenie
+    `uv run pytest -m live_api -p no:recording` działało i miało dostęp do sieci."""
+    try:
+        parser.addoption("--block-network", action="store_true", default=False)
+    except ValueError:
+        pass  # wtyczka pytest-recording aktywna: blokada sieci działa (TAC-03)
+
+
 @pytest.fixture
 def real_input() -> Path:
     if not REAL_INPUT.exists():
