@@ -1,0 +1,106 @@
+{
+  "captured_at": "2026-11-12T15:10:09+00:00",
+  "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+  "model": "openai/gpt-6-luna",
+  "contract_versions": {
+    "STATE_TEXT": "V1",
+    "QUESTION": "V1",
+    "SCHEMA": "V1",
+    "IMAGE": "ORIGINAL"
+  },
+  "httpx_version": "0.28.1",
+  "note": "Luna LLM, wycinek trudny (etykieta unreadable)",
+  "sent_image_sha256": "2cb6feda0fc57affe35503987c06f01f7c1d23daec37fb37941830a92145ef5d",
+  "sent_image_size": [
+    85,
+    78
+  ],
+  "elapsed_s": 4.422,
+  "request_summary": {
+    "model": "openai/gpt-6-luna",
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "Is there a round Polish B-33 maximum speed limit sign (red ring, black number) in this image? If yes, which number does it show? Answer with JSON only."
+          },
+          {
+            "type": "image_url",
+            "image_url": {
+              "url": "<image sha256=2cb6feda0fc57affe35503987c06f01f7c1d23daec37fb37941830a92145ef5d>"
+            }
+          }
+        ]
+      }
+    ],
+    "reasoning": {
+      "effort": "medium"
+    },
+    "max_tokens": 4000,
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "b33_reading",
+        "strict": true,
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "answer",
+            "value_kmh",
+            "confidence"
+          ],
+          "properties": {
+            "answer": {
+              "type": "string",
+              "enum": [
+                "10",
+                "20",
+                "30",
+                "40",
+                "50",
+                "60",
+                "70",
+                "80",
+                "90",
+                "100",
+                "110",
+                "120",
+                "130",
+                "140",
+                "other_value",
+                "none",
+                "unreadable"
+              ]
+            },
+            "value_kmh": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 5,
+              "maximum": 140
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        }
+      }
+    },
+    "provider": {
+      "require_parameters": true
+    }
+  },
+  "status": 200,
+  "headers": {
+    "date": "Thu, 12 Nov 2026 15:10:07 GMT",
+    "content-type": "application/json",
+    "x-generation-id": "gen-1794496206-eXUSS2tOs7N9VBeYtGC0"
+  },
+  "body": "\n         \n\n         \n{\"id\":\"gen-1794496206-eXUSS2tOs7N9VBeYtGC0\",\"object\":\"chat.completion\",\"created\":1794496206,\"model\":\"openai/gpt-6-luna\",\"provider\":\"Azure\",\"system_fingerprint\":null,\"service_tier\":\"default\",\"choices\":[{\"index\":0,\"logprobs\":null,\"finish_reason\":\"stop\",\"native_finish_reason\":\"completed\",\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"answer\\\":\\\"30\\\",\\\"value_kmh\\\":30,\\\"confidence\\\":0.38}\",\"refusal\":null,\"reasoning\":\"**Inspecting a blurry sign**\\n\\nI need to analyze a tiny, blurry image of a sign. It seems to be a circular sign with a red ring and possibly a blue interior. I’m guessing it indicates a speed limit, maybe 30. I'll focus on the image, which appears to be 56x76 in size, and check pixels for clarity. The number looks like \\\"30,\\\" based on the circular nature and dark digits. The user mentioned that it’s a Polish B-33 maximum speed sign, so I need to confirm this in the output schema.\",\"reasoning_details\":[{\"type\":\"reasoning.summary\",\"summary\":\"**Inspecting a blurry sign**\\n\\nI need to analyze a tiny, blurry image of a sign. It seems to be a circular sign with a red ring and possibly a blue interior. I’m guessing it indicates a speed limit, maybe 30. I'll focus on the image, which appears to be 56x76 in size, and check pixels for clarity. The number looks like \\\"30,\\\" based on the circular nature and dark digits. The user mentioned that it’s a Polish B-33 maximum speed sign, so I need to confirm this in the output schema.\",\"format\":\"azure-openai-responses-v1\",\"index\":0},{\"type\":\"reasoning.encrypted\",\"data\":\"gAAAAABq9dbScc-akmqUCfgLIA7TzEQRyLKs29g1Xvewgcz6RMupo_0lmwa383Le-8d2tJzyU8ByN76xgvkYe5JGzvrE3rHYGVuqmVsB1y3_Ebcj4ljK73ZBUNQpL7BVm8KRx9jvMTPXywxo-JOU-BpwRfPdFuzmYwaWm8pFPEd_idDwCJw16MyPIEqRcOzBJMBj8CSip2p2mPTRTtUW2P0MUI0KzVBJbBJSikJip1ir24E4y7mWulC3zPKQNHNgs3vhCFzxnrIHRuFICypfdLS-zYrTzXiCHHGm3V8AZw7C9MvaVjMvi7Lv51xv7sn4sAsWvH_ak4PIjuxbqUYZu8dVwJXJTbnFbcgsYdLYBdmR4glnrKKJRZRD_9ysdFQk65gXNLbnWwwce7aLY_5QVJPZTGNJfIdv6BaTWnN5Rg3wOg035v1q0oJhKPtEztFW4Vc4cGli-o1-MOoP5Zzsupl0JyxGAx1fQVpyhjXS2HwOqNZHkU53_nBpQ6I379vV8kM5LWQbhuDxeqsxgWPOt5l6qfuV-IbSyC01-C-6DfvtFw15Toy1pOLbdcNUBf-f6NLHg8PbDII24Oc4FWUJjk7jwF3Pyj5wJrIXdIov_UtsxGnVq0AkExVhmos3Q93IMhH6ysT7Wu-eM43XuDwjJykAMSPfPXmcGk6rQ773_enzBTiGAP88U2gg5n9NKchSCmOaLCFBCc8jCtvmHpxt3iSu5AaNcu7NDFEbVWydf60qIWQLRX4efefyRZcOE1SjXm91EOU0j2yjWhoBaYQm_QOYb-GG2pXxJJS1DQ40idjKE2f94J62VBGjfzDpuAOTUKsdEj_5x4fvJxgE5YvBcdRpAtQaB07rCyJ4cic_j19BWTuqHeYTOvm4alS6W_V-XmMVpSA63xFtMgMCXOgCaBy1kbSo4nLQ8WO2fd_frLLvqe-KTXrADaDq6y9gq-G6NbYiVhV6FMXwKZwvAKBz_s7WbbOJC481ivOvdu0SbjpTmvgQTDfZXgRJ-v7z7Vr0vVftd2aHUiFuvSfOeyR90h35vpAs2QReOfxoRR9sGYdaOwzNUh78orovLahqaFOmEHwMt3rbqmG9zleI1HfG_YfKhQFKNaqXPDCFbNrK1rg0xe1V_npszftFhrp5ZOrXb_xwN7ymytEoYZPYVclqyeLwElrDj10cL4ivhTcWYSe7_Ne3LGeiGYXzQRwiA7RUa4VK1GUa9XkPBTvy1bspRlzDuIPzEECCdeaqOk5ey2JCGZ0mpgj0ZUkUcMEgJm4HwT_OHJqnw5NjBmFhGg2znEmF45LN3bkLICn4rOi6uPc8IuJGSOOYOO5dJuRs2zgmFqTB_lI2EvP2NHtUq8G5BhaF-rqZxOvrflHNFhLPwbTAal64YNv-nkwNQvB-eD6fa57CLlNDMI1T1ySxLhQZnm7USyKw9G40cSFS6fpuKQ_KQqIIL91ss5T-lH0wPBtLAOSNo41PdftyyOQGvHKVxF_pkbVpCYcBb7jdKPOs3CnCFbR07xFpx5XaX5PUi1t4_Q7mGHdDgDuurp-tr4rk5uLoYrL7ROGiMYh7vOCEvx3UZdnB229b4Nt7ANxJe9qIWu4nMHH9I4LP_QKZRFJceQUPoeroRyD_s6hDkvhifDeRLUxr6jzCmYNOrjib-4Fh9jTzZJ5oqa6khLYJU5QSxI2RcLZWpmxiRCtetw86-IipjVFarHMpuJ90GS1PwCUNrnF4GBYiL1J6qRJUWd8k-SijhBdF5hC9mAvlLh7QNp_vrhIYLhu3oVknViHsMm9Yzf6TBW4QJhn_B0qA995TUBRT7Z9Cg4dh20M9vzFc_K6PvSZ--2S50iGxJdB5WwUpWlg3o8X8bU1WkQUxhWpCiNJ0SNVKB3NUFBSfjEWrgtSZaww3Yv1zOSsyMGfXdGl_ZLsyp7NEmFmrMOuLfiCNWNKh9YmwgVZ8FvAvHb_ykcZ9MjE3KUPB1MWiP1vPfglbiKyuA7uWzIKbMu7YM8205YBljuMCrB63hCAw_TFD1GOxFMOXtaTF-GPyJ2RCL8Bw8UBCoefGspwRsJArboAbFUya0EcHFv_PwKAYq5CYd4BDaoDBjGOuSUNH9XYktKos2fbKXpfAhFjPODEuI9r5MmYgSz7LrDB5TPDMMgoQrBsMCoz6xQLlj5BzHai2CgO8K_SjZ2Wf-9VyEHbBNTbaAq6K775SnF9KQLv2ljvNKsxX9bRKrT5iG-ZvS3ZWtDQcx-qgMSHEvwHzYxZ2onzkQxNyc-f2sfY7r5PvJtzuNRpQx1joIgrERCSEMjIIHt5MIIYSLWE53k7DNSi331_6aXbv_6Xypvy4qpUT3PMx7HMHdn_uvWkAw8O7BP7uL_Nb-Uu9x-wZxavK1mVfqPIJrOysddJWbU8gcs585Bik_3xMAszkXyM7upnUEO-OzIBoWUwkCSfJRY9nMBMhniLURrKTz0c8DYceWMjwn_GqyKFQ4XhOFMJJbrrsrMooSNYNFjlkqx-dwbMyAa_7dyFoEj_6-qI-mtb8nwU2jsjUgbL5o4FBzhV9LSjpbFiWIry9Sri3_-T8bmNoI_Ekz12pwwd_gIDFGv23cuA8mB-VMmt3-4_IgZ4Qhy0XYXj-yiMuMhWvxGlkA9zRqae9OMxg17EQDoBtwA_1RkSr1Xu-5658McR0okafa6Vh2LBN-zFjS9EAH0a_qvr2ZGb1iSEblP8v5ORFbmn5Fg_uB0nMU_mppu-0q8B0XGgGYcpMcL4TfXCFDdxUVXrlHlSSvtMrq39MIK6KCPzGeZWYn3hGWo9XPuquazpIl28Kddi0rmVE2Wz8JlyCfVTmbCBbqTGXNrMVIUDKiBO_eVYTYZZcNNC1Kcdo6xTQZDHZC_XlUdhirHawebJaE-kfiLbcckBPj0NeKaIzpCFIzgRIPQBQTV8sGrhihIUCNnkgmPVEYKHZ1s7L9eip4RM09nUu6p4FsmCjqXUzl1dsUWzFA5CXESC0gHusj5ArytvVnUkVu11ZdU6069Q7V76fK8mBuhwBs7PV5rAVqEr5qA1mRdf_3PNkGmxK-phy3QAsocyw0KUGxkImix9irVkNmUMVYt28e6Hi9FsMU-8I1qHklkjCwhMZqv5umLzxZOad8MwDRQCjC0N30tfgSUrcjnhUl8Lw39TANyDMcY5t-toup4OZOautAnj2j-H1nCFFOy1FK_GHGRxkc7CD2BOMvY1Rhw4nagB0q6l2v4osQGaEIhCNDmOWqfuNDRAMHbQYlfjHyG8epOekh_eU4sHTc74g7jACPVFcML8uhGy0VtYompEus8ly_bALMbgc7n746qbSbEiWoBFgrxPtElNO7oorO9HCZSDFNp79gd4ZUdQNRpzR7OK2ydpxqACyW7du1gtbhZts1wP7heOl7bwM9xNwbU6glqBLUcxwDIEaCV_aIf_LMdhrHKPVp5IgTs4JfioWWov7-lFqcIdEC-gov57jmKHijjhYOTTxXUEGcxiu317HeZtolao8yqEZa3j2elG6gctr60Lu-BuDj7I0gvSPJGeWM4WJFNsAMJ0fh6zRzO9f8VQAlgFfJyUQ9wCBqeM_weoGoQNEkPha1RJrxwVMPpqFJ2OiJqz96Z_E9Q==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LWx1bmEtMjAyNjA5MjJ8YXp1cmUifQ\",\"format\":\"azure-openai-responses-v1\",\"id\":\"rs_0cdc8d8334003b4c016af5d6cf3cd88195b5d1e8856dc59591\",\"index\":1}]}}],\"usage\":{\"prompt_tokens\":135,\"completion_tokens\":213,\"total_tokens\":348,\"cost\":0,\"is_byok\":true,\"prompt_tokens_details\":{\"cached_tokens\":0,\"cache_write_tokens\":0,\"audio_tokens\":0,\"video_tokens\":0},\"cost_details\":{\"upstream_inference_cost\":0.00012,\"upstream_inference_prompt_cost\":0.0000135,\"upstream_inference_completions_cost\":0.0001065},\"completion_tokens_details\":{\"reasoning_tokens\":184,\"image_tokens\":0,\"audio_tokens\":0}}}"
+}
