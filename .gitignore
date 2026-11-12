@@ -20,3 +20,9 @@ __pycache__/
 *.class
 /.idea
 /.claude/worktrees
+
+# map-qa app (Python/uv)
+.venv/
+.pytest_cache/
+.ruff_cache/
+reports/map-qa/runs/
