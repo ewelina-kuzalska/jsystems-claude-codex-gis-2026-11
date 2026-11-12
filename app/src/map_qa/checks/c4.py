@@ -27,7 +27,9 @@ def _fmt(v: float | None) -> str:
     return str(int(v)) if float(v).is_integer() else f"{v:.1f}"
 
 
-def _base(res: SignResolution, ctx: SignRoadContext | None, sign, nearest) -> Candidate:
+def _base(
+    res: SignResolution, ctx: SignRoadContext | None, sign, nearest, tags_raw=None
+) -> Candidate:
     t1, t2 = res.tier1, res.tier2
     dist = (nearest or {}).get("distance_m", "")
     flags = ctx.flags if ctx else ()
@@ -40,7 +42,8 @@ def _base(res: SignResolution, ctx: SignRoadContext | None, sign, nearest) -> Ca
         photo_url=str(sign.get("source_url", "")),
         photo_author=str(sign.get("creator", "")),
         photo_license=str(sign.get("license", "")),
-        osm_raw=json.dumps(ctx.osm_speed_raw, ensure_ascii=False) if ctx else "",
+        # Pełne tagi drogi ze snapshotu (AC-04); dla way spoza snapshotu tylko tagi prędkości.
+        osm_raw=tags_raw or (json.dumps(ctx.osm_speed_raw, ensure_ascii=False) if ctx else ""),
         osm_normalized=_fmt(ctx.osm_value_kmh) if ctx else "",
         distance_m=round(float(dist), 1) if dist not in ("", None) else None,
         uncertain_link=bool(flags),
@@ -66,7 +69,9 @@ def compare_signs(
     contexts: dict[str, SignRoadContext],
     signs: pd.DataFrame,
     nearest: pd.DataFrame,
+    osm_tags_raw: dict[int, str] | None = None,
 ) -> tuple[list[Candidate], list[NotComparable]]:
+    osm_tags_raw = osm_tags_raw or {}
     sign_by = {r["photo_id"]: r for r in signs.to_dict("records")}
     near_by = {r["photo_id"]: r for r in nearest.to_dict("records")}
     candidates: list[Candidate] = []
@@ -75,7 +80,13 @@ def compare_signs(
         ctx = contexts.get(res.photo_id)
         sign = sign_by[res.photo_id]
         if res.resolved_by == "human_pending":
-            cand = _base(res, ctx, sign, near_by.get(res.photo_id))
+            cand = _base(
+                res,
+                ctx,
+                sign,
+                near_by.get(res.photo_id),
+                osm_tags_raw.get(ctx.osm_way_id) if ctx else None,
+            )
             cand.check = "C4-manual"
             cand.reason_code = res.manual_reason or "model_unavailable"
             detail = f" ({res.detail})" if res.detail else ""
@@ -107,7 +118,13 @@ def compare_signs(
             continue
         if ctx.status == "ok" and ctx.osm_value_kmh == value:
             continue
-        cand = _base(res, ctx, sign, near_by.get(res.photo_id))
+        cand = _base(
+            res,
+            ctx,
+            sign,
+            near_by.get(res.photo_id),
+            osm_tags_raw.get(ctx.osm_way_id) if ctx else None,
+        )
         tier = "model decyzyjny" if res.resolved_by == "decision_model" else "ogólny LLM"
         escalated = " Odpowiedź kroku 1 eskalowano do ogólnego LLM." if res.tier2 else ""
         if ctx.status == "missing":

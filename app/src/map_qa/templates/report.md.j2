@@ -67,6 +67,17 @@ Kraków i okolice. Raport wskazuje miejsca do sprawdzenia; nie rozstrzyga, że m
 
 Kolejka ręczna według kodu: {% for reason, n in c4.manual_by_reason.items() %}{{ reason|md }} {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
 
+{% if c4.readings is defined %}
+### Wszystkie odczyty C4 (przetworzone wycinki)
+
+| Wycinek | Krok 1 (p) | Krok 2 (pewność) | Rozstrzygnięte przez | Wynik / status |
+|---|---|---|---|---|
+{% for r in c4.readings %}
+| {{ r.photo_id|md }} | {{ (r.tier1 or "—")|md }} ({{ r.tier1_p|prob }}) | {% if r.tier2 %}{{ r.tier2|md }} ({{ r.tier2_p|prob }}){% else %}—{% endif %} | {{ r.resolved_by|md }} | {% if r.final == "none" %}brak znaku B-33{% elif r.final %}{{ r.final }} km/h{% else %}{{ r.status|md }}{% endif %}{% if r.tier2 %} · krok 1 eskalowano do ogólnego LLM{% endif %} |
+{% endfor %}
+
+{% endif %}
+
 {% else %}
 **C4: nie uruchomiono (not run).** {{ c4.reason|md }}
 

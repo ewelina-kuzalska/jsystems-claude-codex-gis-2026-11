@@ -83,3 +83,29 @@ def test_golden_reports(fixtures_dir, tmp_path, snapshot):
     assert f'src="images/{OFFLINE}.jpg"' in html
     assert md == snapshot(name="report.md")
     assert html == snapshot(name="report.html")
+
+
+def test_c4_crop_copied_even_if_photo_seen_earlier(fixtures_dir, tmp_path):  # przegląd T27
+    pid = "mapillary_1237130608489136"
+    tasks = build_tasks(
+        [
+            Candidate(
+                check="C1",
+                reason_code="missing_lit",
+                osm_id=1,
+                photo_id=pid,
+                photo_ids=(pid,),
+                geometry=Point(19.9, 50.0),
+            ),
+            Candidate(
+                check="C4-manual",
+                reason_code="below_threshold",
+                photo_id=pid,
+                photo_ids=(pid,),
+                geometry=Point(19.9, 50.0),
+            ),
+        ]
+    )
+    images = prepare_images(tasks, fixtures_dir / "map_qa", tmp_path, {})
+    assert images[f"{pid}#crop"].rel_path == f"images/{pid}_crop.jpg"
+    assert (tmp_path / "images" / f"{pid}_crop.jpg").is_file()

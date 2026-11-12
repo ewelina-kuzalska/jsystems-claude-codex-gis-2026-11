@@ -233,3 +233,53 @@ def test_c4_block_and_manual_queue(tmp_path):
     assert "below_threshold" in html and "40 (0,40)" in html  # podpowiedzi z obu kroków
     assert 'data-check="C4-manual" data-count="1"' in html
     assert "| C4-manual | 1 |" in md and "unreadable (0,80)" in md
+
+
+def test_all_c4_readings_listed(tmp_path):  # AC-22, PRD §11: każda odpowiedź z p
+    block = {
+        "status": "run",
+        "tier1_model": "m1",
+        "tier2_model": "m2",
+        "threshold": 0.7,
+        "limit": 25,
+        "requests": {"tier1": 2, "tier2": 1},
+        "cached": {"tier1": 0, "tier2": 0},
+        "cost_text": "0",
+        "processed": 2,
+        "sample_total": 2,
+        "resolved": {"decision_model": 1, "general_llm": 0, "human_pending": 1, "not_run": 0},
+        "stop_text": "nie zatrzymano",
+        "accuracy": [],
+        "evaluation_note": "",
+        "manual_by_reason": {"model_unavailable": 1},
+        "readings": [
+            {
+                "photo_id": "s1",
+                "resolved_by": "decision_model",
+                "final": "none",
+                "tier1": "none",
+                "tier1_p": 0.95,
+                "tier2": "",
+                "tier2_p": None,
+                "status": "",
+            },
+            {
+                "photo_id": "s2",
+                "resolved_by": "human_pending",
+                "final": None,
+                "tier1": "unreadable",
+                "tier1_p": 0.6,
+                "tier2": "",
+                "tier2_p": None,
+                "status": "model_unavailable",
+            },
+        ],
+    }
+    ctx = build_context(report_input(c4=block))
+    render_html(ctx, tmp_path / "r.html")
+    render_markdown(ctx, tmp_path / "r.md")
+    for doc in ((tmp_path / "r.html").read_text("utf-8"), (tmp_path / "r.md").read_text("utf-8")):
+        assert "Wszystkie odczyty" in doc
+        assert "brak znaku B-33" in doc
+        assert "model_unavailable" in doc or r"model\_unavailable" in doc
+        assert "0,95" in doc and "0,60" in doc

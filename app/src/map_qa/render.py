@@ -256,21 +256,23 @@ def prepare_images(
     img_dir = Path(out_dir) / "images"
     for t in tasks:
         c = t.candidate
-        if not c.photo_id or c.photo_id in images:
+        if not c.photo_id:
             continue
-        src = find_photo(Path(input_dir), c.photo_id, filenames.get(c.photo_id))
-        rel = None
-        if src is not None:
-            img_dir.mkdir(parents=True, exist_ok=True)
-            rel = f"images/{c.photo_id}{src.suffix.lower()}"
-            shutil.copyfile(src, Path(out_dir) / rel)
-        images[c.photo_id] = ImageRef(rel, c.photo_author, c.photo_license, c.photo_url)
-        if c.check in ("C4", "C4-manual"):
+        if c.photo_id not in images:
+            src = find_photo(Path(input_dir), c.photo_id, filenames.get(c.photo_id))
+            rel = None
+            if src is not None:
+                img_dir.mkdir(parents=True, exist_ok=True)
+                rel = f"images/{c.photo_id}{src.suffix.lower()}"
+                shutil.copyfile(src, Path(out_dir) / rel)
+            images[c.photo_id] = ImageRef(rel, c.photo_author, c.photo_license, c.photo_url)
+        crop_key = f"{c.photo_id}#crop"
+        if c.check in ("C4", "C4-manual") and crop_key not in images:
             crop = Path(input_dir) / "signs" / "crops" / f"{c.photo_id}.jpg"
             crop_rel = None
             if crop.is_file():
                 img_dir.mkdir(parents=True, exist_ok=True)
                 crop_rel = f"images/{c.photo_id}_crop.jpg"
                 shutil.copyfile(crop, Path(out_dir) / crop_rel)
-            images[f"{c.photo_id}#crop"] = ImageRef(crop_rel)
+            images[crop_key] = ImageRef(crop_rel)
     return images

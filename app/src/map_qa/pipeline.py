@@ -198,7 +198,22 @@ def _c4_stage(cfg, snapshot, data, confirm, echo) -> C4Outcome:
         r.photo_id: sign_road_context(sign_rows[r.photo_id], near_rows[r.photo_id], data["index"])
         for r in processed
     }
-    candidates, not_comparable = compare_signs(processed, contexts, signs, nearest)
+    osm_tags_raw = dict(zip(data["osm"]["osm_id"].astype(int), data["osm"]["tags"], strict=True))
+    candidates, not_comparable = compare_signs(processed, contexts, signs, nearest, osm_tags_raw)
+    readings = [
+        {
+            "photo_id": r.photo_id,
+            "resolved_by": r.resolved_by,
+            "final": r.final_value,
+            "tier1": (r.tier1.answer or "") if r.tier1 else "",
+            "tier1_p": r.tier1.probability if r.tier1 else None,
+            "tier2": (r.tier2.answer or "") if r.tier2 else "",
+            "tier2_p": r.tier2.probability if r.tier2 else None,
+            "status": r.manual_reason or "",
+            "detail": r.detail,
+        }
+        for r in processed
+    ]
     metrics = evaluate(resolutions, Path(cfg.input_dir) / "signs" / "labels.csv")
     cached = Counter(
         rd.tier
@@ -249,6 +264,7 @@ def _c4_stage(cfg, snapshot, data, confirm, echo) -> C4Outcome:
         "raw_tier1": list(metrics["raw_tier1"]),
         "coverage": list(metrics["coverage"]),
         "manual_by_reason": metrics["manual_by_reason"],
+        "readings": readings,
         "uncertain_labels": metrics["uncertain_labels"],
         "label_unparsable": metrics["label_unparsable"],
         "evaluation_note": (

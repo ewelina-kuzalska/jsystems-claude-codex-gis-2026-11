@@ -123,3 +123,11 @@ def test_direction_unknown_not_comparable():
         res, {"a": ctx("a", status="direction_unknown", value=None)}, SIGNS, NEAREST
     )
     assert cands == [] and nc[0].reason_code == "direction_unknown"
+
+
+def test_full_osm_tags_exported_for_snapshot_way():  # AC-04, przegląd T27
+    res = [SignResolution("a", "decision_model", "70", None, "", rd("a", 1, "70", 0.9))]
+    full = '{"highway":"primary","maxspeed":"50","surface":"asphalt"}'
+    (c,), _ = compare_signs(res, {"a": ctx("a")}, SIGNS, NEAREST, osm_tags_raw={7: full})
+    assert c.osm_raw == full
+    assert "maxspeed=50" in c.extra["osm_speed_tags"]

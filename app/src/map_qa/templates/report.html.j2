@@ -145,6 +145,20 @@
   <p class="muted">{{ c4.evaluation_note }}</p>
   <h3>Kolejka ręczna według kodu</h3>
   <ul>{% for reason, n in c4.manual_by_reason.items() %}<li><code>{{ reason }}</code>: {{ n }}</li>{% endfor %}</ul>
+  {% if c4.readings is defined %}
+  <h3>Wszystkie odczyty C4 (przetworzone wycinki)</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Wycinek</th><th>Krok 1 (p)</th><th>Krok 2 (pewność)</th><th>Rozstrzygnięte przez</th><th>Wynik / status</th></tr></thead>
+    <tbody>
+    {% for r in c4.readings %}
+      <tr><td><code>{{ r.photo_id }}</code></td><td>{{ r.tier1 or "—" }} ({{ r.tier1_p|prob }})</td>
+      <td>{% if r.tier2 %}{{ r.tier2 }} ({{ r.tier2_p|prob }}){% elif r.tier1 and r.resolved_by != "decision_model" %}—{% else %}nie eskalowano{% endif %}</td>
+      <td><code>{{ r.resolved_by }}</code></td>
+      <td>{% if r.final == "none" %}brak znaku B-33{% elif r.final %}{{ r.final }} km/h{% else %}<code>{{ r.status }}</code>{% endif %}{% if r.tier2 %} · krok 1 eskalowano do ogólnego LLM{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% endif %}
   {% else %}
   <p><strong>C4: nie uruchomiono (not run).</strong> {{ c4.reason }}</p>
   <p class="muted">Próg: {{ meta.threshold|prob }}. Żądania AI: 0.</p>
