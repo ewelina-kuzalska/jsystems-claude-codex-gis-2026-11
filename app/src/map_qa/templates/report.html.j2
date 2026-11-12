@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Map QA — raport kandydatów do sprawdzenia</title>
+<style>
+  :root { --fg: #1d2330; --muted: #5b6475; --line: #d8dde6; --bg: #ffffff; --soft: #f4f6f9;
+          --accent: #1f5fa8; --warn: #8a5300; --warnbg: #fff4e0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; font: 15px/1.5 system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+         color: var(--fg); background: var(--bg); }
+  main { max-width: 1280px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 20px; margin: 32px 0 8px; padding-top: 8px; border-top: 2px solid var(--line); }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  a { color: var(--accent); }
+  .muted { color: var(--muted); }
+  .note { background: var(--warnbg); color: var(--warn); border-left: 4px solid var(--warn);
+          padding: 8px 12px; margin: 8px 0; }
+  .meta { display: grid; grid-template-columns: max-content 1fr; gap: 2px 16px; margin: 12px 0; }
+  .meta dt { color: var(--muted); }
+  .meta dd { margin: 0; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 16px; font-size: 14px; }
+  th, td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: var(--soft); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  code, .raw { font-family: Consolas, "Courier New", monospace; font-size: 12px; word-break: break-all; }
+  .raw { max-width: 360px; }
+  img.thumb { max-width: 220px; max-height: 160px; display: block; }
+  img.crop { max-width: 120px; max-height: 120px; display: block; }
+  .flag { display: inline-block; background: var(--soft); border: 1px solid var(--line);
+          border-radius: 3px; padding: 0 4px; margin: 1px; font-size: 12px; }
+  .uncertain { color: var(--warn); font-weight: 600; }
+  nav ul { columns: 3; padding-left: 18px; }
+</style>
+</head>
+<body>
+<main>
+{% macro link(url, text) %}{% if url is https %}<a href="{{ url }}">{{ text }}</a>{% else %}{{ url }}{% endif %}{% endmacro %}
+{% macro photo(r) %}
+{% if r.photo_id %}
+  {% if r.image %}<img class="thumb" src="{{ r.image }}" alt="Zdjęcie {{ r.photo_id }}">{% else %}<span class="muted">{{ texts.missing_image }}</span>{% endif %}
+  <div>{{ link(r.photo_url, "Źródło zdjęcia") }} · {{ r.photo_author }} · {{ r.photo_license }}</div>
+  {% if r.photo_count > 1 %}<div class="muted">+ {{ r.photo_count - 1 }} inne zdjęcia (w eksporcie)</div>{% endif %}
+{% else %}<span class="muted">brak zdjęcia</span>{% endif %}
+{% endmacro %}
+{% macro flags(r) %}
+{% if r.uncertain_link %}<div class="uncertain">niepewne dopasowanie (uncertain link)</div>{% endif %}
+{% for f in r.file_flags.split(", ") if f %}<span class="flag">{{ f }}</span>{% endfor %}
+{% for f in r.own_flags.split(", ") if f %}<span class="flag">{{ f }} (własna)</span>{% endfor %}
+{% endmacro %}
+{% macro empty(check) %}
+{% for c in checks if c.check == check %}<p class="muted">0 kandydatów (sprawdzono {{ c.rows_checked|num }} wierszy)</p>{% endfor %}
+{% endmacro %}
+
+<header id="top">
+  <h1>Map QA — raport kandydatów do sprawdzenia</h1>
+  <p class="muted">Kraków i okolice. Raport wskazuje miejsca do sprawdzenia; nie rozstrzyga, że mapa jest niepoprawna.</p>
+  <dl class="meta">
+    <dt>Ekstrakt OSM</dt><dd>{{ meta.osm_extract_date }}</dd>
+    <dt>Wydanie Overture</dt><dd>{{ meta.overture_release }}</dd>
+    <dt>Snapshot utworzony</dt><dd>{{ meta.created_at }}</dd>
+    <dt>Uruchomienie</dt><dd>{{ meta.run_started_at }}</dd>
+    <dt>Próg pewności C4</dt><dd>{{ meta.threshold|prob }}</dd>
+    <dt>Drogi OSM</dt><dd>{{ meta.rows.osm_roads|num }}</dd>
+    <dt>Segmenty Overture</dt><dd>{{ meta.rows.overture_segments|num }}</dd>
+    <dt>Zdjęcia</dt><dd>{{ meta.rows.photos|num }}</dd>
+    <dt>Linki zdjęcie–droga</dt><dd>{{ meta.rows.photo_road_links|num }}</dd>
+    <dt>Miniatury lokalne</dt><dd>{{ thumbs.with|num }} / {{ thumbs.total|num }} zdjęć w zadaniach</dd>
+  </dl>
+  <p><strong>Atrybucja:</strong> {{ meta.attribution }}</p>
+  {% for w in meta.warnings %}<p class="note">{{ w }}</p>{% endfor %}
+  <p class="note">{{ texts.candidate }}</p>
+</header>
+
+<nav>
+  <ul>
+    <li><a href="#summary">Podsumowanie</a></li>
+    <li><a href="#c4-block">Blok C4</a></li>
+    <li><a href="#c1">C1 brakujące atrybuty</a></li>
+    <li><a href="#c2">C2 rozbieżności</a></li>
+    <li><a href="#c3">C3 niepewne dopasowania</a></li>
+    <li><a href="#c4">C4 znaki</a></li>
+    <li><a href="#manual">Kolejka ręczna</a></li>
+    <li><a href="#not-comparable">Nieporównywalne</a></li>
+    <li><a href="#spatial-only">Tylko przestrzenne</a></li>
+    <li><a href="#surface-mapping">Mapowanie nawierzchni</a></li>
+    <li><a href="#disclaimers">Zastrzeżenia</a></li>
+  </ul>
+</nav>
+
+<section id="summary">
+  <h2>Podsumowanie</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Kontrola</th><th>Opis</th><th class="num">Kandydaci</th><th class="num">Sprawdzono wierszy</th></tr></thead>
+    <tbody>
+    {% for c in checks %}
+      <tr><td><a href="#{{ c.anchor }}">{{ c.check }}</a></td><td>{{ c.label }}</td>
+        <td class="num" data-check="{{ c.check }}" data-count="{{ c.count }}">{{ c.count|num }}</td>
+        <td class="num">{{ c.rows_checked|num }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <h3>Według kodu przyczyny</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Kontrola</th><th>Kod przyczyny</th><th class="num">Liczba</th></tr></thead>
+    <tbody>
+    {% for r in reasons %}
+      <tr><td>{{ r.check }}</td><td><a href="#{{ r.anchor }}"><code>{{ r.reason_code }}</code></a></td><td class="num">{{ r.count|num }}</td></tr>
+    {% else %}
+      <tr><td colspan="3" class="muted">Brak kandydatów.</td></tr>
+    {% endfor %}
+      <tr><td>C2</td><td><a href="#not-comparable">nieporównywalne (wszystkie kody)</a></td><td class="num">{{ nc_total|num }}</td></tr>
+      <tr><td>C1–C4</td><td>uncertain link (kandydaci z niepewnym dopasowaniem)</td><td class="num">{{ rows.C1|selectattr("uncertain_link")|list|length + rows.C2|selectattr("uncertain_link")|list|length + rows.C4|selectattr("uncertain_link")|list|length }}</td></tr>
+      <tr><td>C2</td><td><a href="#spatial-only">tylko przestrzenne</a></td><td class="num">{{ spatial_only|length }}</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="c4-block">
+  <h2>Blok C4 — odczyt znaków B-33</h2>
+  {% if c4.status == "run" %}
+  <dl class="meta">
+    <dt>Stan</dt><dd>uruchomiono</dd>
+    <dt>Model kroku 1</dt><dd><code>{{ c4.tier1_model }}</code></dd>
+    <dt>Model kroku 2</dt><dd><code>{{ c4.tier2_model }}</code></dd>
+    <dt>Próg</dt><dd>{{ c4.threshold|prob }}</dd>
+    <dt>Żądania krok 1 / krok 2 / limit</dt><dd>{{ c4.requests.tier1 }} / {{ c4.requests.tier2 }} / {{ c4.limit }}</dd>
+    <dt>Z cache (krok 1 / krok 2)</dt><dd>{{ c4.cached.tier1 }} / {{ c4.cached.tier2 }}</dd>
+    <dt>Koszt (USD)</dt><dd>{{ c4.cost_text }}</dd>
+    <dt>Wycinki przetworzone</dt><dd>{{ c4.processed }} z {{ c4.sample_total }}</dd>
+    <dt>Rozstrzygnięte</dt><dd>decision_model {{ c4.resolved.decision_model }} · general_llm {{ c4.resolved.general_llm }} · human_pending {{ c4.resolved.human_pending }} · not_run {{ c4.resolved.not_run }}</dd>
+    <dt>Zatrzymanie płatnej pętli</dt><dd>{{ c4.stop_text }}</dd>
+  </dl>
+  <h3>Zgodność z roboczą referencją (poprawne / ocenione)</h3>
+  <p class="note">{{ texts.labels }} {{ texts.model }}</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Zakres</th><th class="num">Zgodne</th><th class="num">Ocenione</th></tr></thead>
+    <tbody>
+    {% for a in c4.accuracy %}<tr><td>{{ a.label }}</td><td class="num">{{ a.correct }}</td><td class="num">{{ a.evaluated }}</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  <p class="muted">{{ c4.evaluation_note }}</p>
+  <h3>Kolejka ręczna według kodu</h3>
+  <ul>{% for reason, n in c4.manual_by_reason.items() %}<li><code>{{ reason }}</code>: {{ n }}</li>{% endfor %}</ul>
+  {% else %}
+  <p><strong>C4: nie uruchomiono (not run).</strong> {{ c4.reason }}</p>
+  <p class="muted">Próg: {{ meta.threshold|prob }}. Żądania AI: 0.</p>
+  <p class="note">{{ texts.labels }} {{ texts.model }}</p>
+  {% endif %}
+</section>
+
+<section id="c1">
+  <h2>C1 — brakujące atrybuty</h2>
+  {% if c1 %}
+  <h3>OSM: drogi bez atrybutu według klasy (liczba i udział)</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>highway</th><th class="num">Drogi</th><th class="num">bez maxspeed*</th><th class="num">bez surface</th><th class="num">bez lanes</th><th class="num">bez lit</th></tr></thead>
+    <tbody>
+    {% for r in c1.osm %}
+      <tr><td>{{ r.highway }}</td><td class="num">{{ r.total|num }}</td>
+      {% for a in ["maxspeed", "surface", "lanes", "lit"] %}<td class="num">{{ r.missing[a]|num }} ({{ (100.0 * r.missing[a] / r.total)|round(1)|string|replace(".", ",") }}%)</td>{% endfor %}</tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <h3>Overture: segmenty bez reguły według klasy</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>class</th><th class="num">Segmenty</th><th class="num">bez speed_limits</th><th class="num">bez road_surface</th></tr></thead>
+    <tbody>
+    {% for r in c1.overture %}
+      <tr><td>{{ r.class }}</td><td class="num">{{ r.total|num }}</td>
+      <td class="num">{{ r.missing_speed|num }} ({{ (100.0 * r.missing_speed / r.total)|round(1)|string|replace(".", ",") }}%)</td>
+      <td class="num">{{ r.missing_surface|num }} ({{ (100.0 * r.missing_surface / r.total)|round(1)|string|replace(".", ",") }}%)</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <p class="muted">Zadania C1 powstają tylko dla dróg z co najmniej jednym zdjęciem; pozostałe braki są wyłącznie w podsumowaniu.</p>
+  {% endif %}
+  <h3>Zadania C1</h3>
+  {% if rows.C1 %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>task_id</th><th>Kod</th><th>OSM way</th><th>Flagi</th><th>Zdjęcie</th><th>Opis</th></tr></thead>
+    <tbody>
+    {% for r in rows.C1 %}
+      <tr><td><code>{{ r.task_id }}</code></td><td><code>{{ r.reason_code }}</code></td><td>{{ r.osm_id }}</td><td>{{ flags(r) }}</td><td>{{ photo(r) }}</td><td>{{ r.description }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}{{ empty("C1") }}{% endif %}
+</section>
+
+<section id="c2">
+  <h2>C2 — rozbieżności OSM–Overture</h2>
+  {% if c2_stats %}
+  <p>Pary (way, segment) przez referencję źródła: {{ c2_stats.pairs|num }}. Porównania: {{ c2_stats.comparisons|num }} = kandydaci {{ c2_stats.candidates|num }} + nieporównywalne {{ c2_stats.not_comparable|num }} + zgodne {{ c2_stats.equal|num }}. Pominięte z powodu braku wartości po jednej stronie (sprawa C1): {{ c2_stats.missing|num }}.</p>
+  {% endif %}
+  {% if rows.C2 %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>task_id</th><th>Kod</th><th>Kierunek</th><th>OSM way</th><th>Segment Overture</th><th>Reguła</th><th>OSM surowo</th><th>OSM znorm.</th><th>Overture surowo</th><th>Overture znorm.</th><th>Flagi</th><th>Zdjęcie</th><th>Opis</th></tr></thead>
+    <tbody>
+    {% for r in rows.C2 %}
+      <tr><td><code>{{ r.task_id }}</code></td><td><code>{{ r.reason_code }}</code></td><td>{{ r.direction }}</td><td>{{ r.osm_id }}</td><td><code>{{ r.segment_id }}</code></td><td>{{ r.rule_index }}</td>
+      <td><code>{{ r.osm_value }}</code></td><td>{{ r.osm_normalized }}</td><td class="raw">{{ r.overture_raw }}</td><td>{{ r.overture_normalized }}</td><td>{{ flags(r) }}</td><td>{{ photo(r) }}</td><td>{{ r.description }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}{{ empty("C2") }}{% endif %}
+</section>
+
+<section id="c3">
+  <h2>C3 — niepewne dopasowania zdjęcie–droga</h2>
+  <p class="note">{{ texts.links }}</p>
+  {% if c3 %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Flaga z pliku</th><th class="num">Zdjęcia</th><th>Flaga własna</th><th class="num">Zdjęcia</th></tr></thead>
+    <tbody>
+    {% set ff = c3.file_flags.items()|list %}{% set of = c3.own_flags.items()|list %}
+    {% for i in range([ff|length, of|length]|max) %}
+      <tr>
+        {% if i < ff|length %}<td><code>{{ ff[i][0] }}</code></td><td class="num">{{ ff[i][1] }}</td>{% else %}<td></td><td></td>{% endif %}
+        {% if i < of|length %}<td><code>{{ of[i][0] }}</code></td><td class="num">{{ of[i][1] }}</td>{% else %}<td></td><td></td>{% endif %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <p>Zdjęcia z co najmniej jedną flagą: <strong>{{ c3.photos_with_flag|num }}</strong> z {{ c3.photos_total|num }}.</p>
+  {% endif %}
+  {% if rows.C3 %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>task_id</th><th>Zdjęcie</th><th>OSM way</th><th>Segment Overture</th><th class="num">Dystans [m]</th><th>Flagi z pliku</th><th>Flagi własne</th></tr></thead>
+    <tbody>
+    {% for r in rows.C3 %}
+      <tr><td><code>{{ r.task_id }}</code></td><td>{{ photo(r) }}</td><td>{{ r.osm_id if r.osm_id is not none else "—" }}</td><td><code>{{ r.segment_id }}</code></td><td class="num">{{ r.distance_m|num }}</td>
+      <td>{% for f in r.file_flags.split(", ") if f %}<span class="flag">{{ f }}</span>{% endfor %}</td>
+      <td>{% for f in r.own_flags.split(", ") if f %}<span class="flag">{{ f }}</span>{% endfor %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}{{ empty("C3") }}{% endif %}
+</section>
+
+<section id="c4">
+  <h2>C4 — znaki B-33: rozbieżność z mapą</h2>
+  <p class="note">{{ texts.heading }} {{ texts.model }}</p>
+  {% if rows.C4 %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>task_id</th><th>Kod</th><th>Wycinek</th><th>Krok 1 (p)</th><th>Krok 2 (pewność)</th><th>Rozstrzygnięte przez</th><th>Mapillary</th><th>OSM way</th><th>Tagi prędkości OSM</th><th class="num">Dystans [m]</th><th>Flagi</th><th>Zdjęcie</th><th>Opis</th></tr></thead>
+    <tbody>
+    {% for r in rows.C4 %}
+      <tr><td><code>{{ r.task_id }}</code></td><td><code>{{ r.reason_code }}</code></td>
+      <td>{% if r.crop %}<img class="crop" src="{{ r.crop }}" alt="Wycinek {{ r.photo_id }}">{% else %}<span class="muted">{{ texts.missing_image }}</span>{% endif %}</td>
+      <td>{{ r.tier1_answer or "—" }} ({{ r.tier1_probability|prob }})</td>
+      <td>{% if r.tier2_answer %}{{ r.tier2_answer }} ({{ r.tier2_confidence|prob }}){% else %}—{% endif %}</td>
+      <td><code>{{ r.resolved_by }}</code></td><td>{{ r.mapillary_value }}</td><td>{{ r.osm_id }}</td><td class="raw">{{ r.osm_speed_tags }}</td><td class="num">{{ r.distance_m|num }}</td><td>{{ flags(r) }}</td>
+      <td>{{ link(r.photo_url, "Zdjęcie źródłowe") }} · {{ r.photo_author }} · {{ r.photo_license }}</td><td>{{ r.description }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}{{ empty("C4") }}{% if c4.status != "run" %}<p class="muted">C4: not run.</p>{% endif %}{% endif %}
+</section>
+
+<section id="manual">
+  <h2>Kolejka ręczna znaków</h2>
+  {% if rows["C4-manual"] %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>task_id</th><th>Kod przyczyny</th><th>Wycinek</th><th>Zdjęcie i atrybucja</th><th>Krok 1 (p) — podpowiedź</th><th>Krok 2 (pewność) — podpowiedź</th><th>Opis</th></tr></thead>
+    <tbody>
+    {% for r in rows["C4-manual"] %}
+      <tr><td><code>{{ r.task_id }}</code></td><td><code>{{ r.reason_code }}</code></td>
+      <td>{% if r.crop %}<img class="crop" src="{{ r.crop }}" alt="Wycinek {{ r.photo_id }}">{% else %}<span class="muted">{{ texts.missing_image }}</span>{% endif %}</td>
+      <td>{{ link(r.photo_url, "Pełne zdjęcie") }} · {{ r.photo_author }} · {{ r.photo_license }}</td>
+      <td>{{ r.tier1_answer or "—" }} ({{ r.tier1_probability|prob }})</td>
+      <td>{{ r.tier2_answer or "—" }} ({{ r.tier2_confidence|prob }})</td><td>{{ r.description }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p>Żaden znak nie wymaga ręcznej kontroli.</p>{% endif %}
+</section>
+
+<section id="not-comparable">
+  <h2>Nieporównywalne</h2>
+  <p>Wiersze, których nie porównujemy (warunki, część segmentu, kod strefy, kierunek, częściowe źródło). Wartości oryginalne są zachowane. Razem: <strong>{{ nc_total|num }}</strong>. Pełna lista: <a href="{{ nc_file }}">{{ nc_file }}</a>.</p>
+  <p class="note">{{ texts.outside }}</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Atrybut</th><th>Kod przyczyny</th><th class="num">Liczba</th></tr></thead>
+    <tbody>
+    {% for n in nc_counts %}<tr><td>{{ n.attribute or "—" }}</td><td><code>{{ n.reason_code }}</code></td><td class="num">{{ n.count|num }}</td></tr>
+    {% else %}<tr><td colspan="3" class="muted">Brak.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% for reason, items in nc_samples %}
+  <h3><code>{{ reason }}</code> — przykłady (do {{ nc_sample_size }})</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Kontrola</th><th>Atrybut</th><th>Kierunek</th><th>OSM way</th><th>Segment / zdjęcie</th><th>OSM surowo</th><th>Overture surowo</th></tr></thead>
+    <tbody>
+    {% for n in items %}<tr><td>{{ n.check }}</td><td>{{ n.attribute }}</td><td>{{ n.direction }}</td><td>{{ n.osm_id if n.osm_id is not none else "—" }}</td><td><code>{{ n.segment_id or n.photo_id }}</code></td><td class="raw">{{ n.osm_raw }}</td><td class="raw">{{ n.overture_raw }}</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% endfor %}
+</section>
+
+<section id="spatial-only">
+  <h2>Tylko przestrzenne</h2>
+  <p class="muted">Linki ze zdjęć do segmentów Overture bez referencji do drogi OSM. Nigdy nie tworzą kandydata C2.</p>
+  {% if spatial_only %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Zdjęcie</th><th>OSM way</th><th>Segment Overture</th><th class="num">Dystans [m]</th></tr></thead>
+    <tbody>{% for s in spatial_only %}<tr><td><code>{{ s.photo_id }}</code></td><td>{{ s.osm_way_id }}</td><td><code>{{ s.overture_id }}</code></td><td class="num">{{ s.distance_m }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted">Brak.</p>{% endif %}
+</section>
+
+<section id="surface-mapping">
+  <h2>Mapowanie rodzin nawierzchni</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Źródło</th><th>Wartość</th><th>Rodzina</th></tr></thead>
+    <tbody>{% for s, v, f in surface_mapping %}<tr><td>{{ s }}</td><td><code>{{ v }}</code></td><td>{{ f }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <h3>Wartości spoza mapowania (rodzina unknown)</h3>
+  {% if unknown_surface %}
+  <ul>{% for v, n in unknown_surface %}<li><code>{{ v }}</code>: {{ n|num }}</li>{% endfor %}</ul>
+  {% else %}<p class="muted">Brak.</p>{% endif %}
+</section>
+
+<section id="disclaimers">
+  <h2>Zastrzeżenia</h2>
+  <ul>
+    <li>{{ texts.candidate }}</li>
+    <li>{{ texts.model }}</li>
+    <li>{{ texts.labels }}</li>
+    <li>{{ texts.outside }}</li>
+    <li>{{ texts.heading }}</li>
+    <li>{{ texts.links }}</li>
+  </ul>
+  <p>{{ meta.attribution }}</p>
+  <p><a href="#top">Do góry</a></p>
+</section>
+</main>
+</body>
+</html>

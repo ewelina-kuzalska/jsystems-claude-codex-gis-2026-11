@@ -1,0 +1,219 @@
+{% macro plink(url, text) %}{% if url|md_url %}[{{ text }}]({{ url|md_url }}){% else %}{{ url|md }}{% endif %}{% endmacro %}
+{% macro flags(r) %}{% if r.uncertain_link %}uncertain link: {% endif %}{{ r.file_flags|md }}{% if r.own_flags %}{% if r.file_flags %}, {% endif %}{{ r.own_flags|md }} (własne){% endif %}{% endmacro %}
+{% macro empty(check) %}{% for c in checks if c.check == check %}0 kandydatów (sprawdzono {{ c.rows_checked|num }} wierszy){% endfor %}{% endmacro %}
+# Map QA — raport kandydatów do sprawdzenia
+
+Kraków i okolice. Raport wskazuje miejsca do sprawdzenia; nie rozstrzyga, że mapa jest niepoprawna.
+
+- Ekstrakt OSM: {{ meta.osm_extract_date|md }}
+- Wydanie Overture: {{ meta.overture_release|md }}
+- Snapshot utworzony: {{ meta.created_at|md }}
+- Uruchomienie: {{ meta.run_started_at|md }}
+- Próg pewności C4: {{ meta.threshold|prob }}
+- Drogi OSM: {{ meta.rows.osm_roads|num }} · segmenty Overture: {{ meta.rows.overture_segments|num }} · zdjęcia: {{ meta.rows.photos|num }} · linki: {{ meta.rows.photo_road_links|num }}
+- Miniatury lokalne: {{ thumbs.with|num }} / {{ thumbs.total|num }} zdjęć w zadaniach (tylko w raporcie HTML)
+
+**Atrybucja:** {{ meta.attribution|md }}
+
+{% for w in meta.warnings %}
+> {{ w|md }}
+
+{% endfor %}
+> {{ texts.candidate|md }}
+
+## Podsumowanie
+
+<!-- summary-counts -->
+| Kontrola | Kandydaci | Opis | Sprawdzono wierszy |
+|---|---:|---|---:|
+{% for c in checks %}
+| {{ c.check }} | {{ c.count }} | {{ c.label|md }} | {{ c.rows_checked|num }} |
+{% endfor %}
+<!-- /summary-counts -->
+
+### Według kodu przyczyny
+
+| Kontrola | Kod przyczyny | Liczba |
+|---|---|---:|
+{% for r in reasons %}
+| {{ r.check }} | {{ r.reason_code|md }} | {{ r.count|num }} |
+{% endfor %}
+| C2 | nieporównywalne (wszystkie kody) | {{ nc_total|num }} |
+| C2 | tylko przestrzenne | {{ spatial_only|length }} |
+
+## Blok C4 — odczyt znaków B-33
+
+{% if c4.status == "run" %}
+- Model kroku 1: {{ c4.tier1_model|md }} · model kroku 2: {{ c4.tier2_model|md }}
+- Próg: {{ c4.threshold|prob }}
+- Żądania krok 1 / krok 2 / limit: {{ c4.requests.tier1 }} / {{ c4.requests.tier2 }} / {{ c4.limit }}
+- Z cache (krok 1 / krok 2): {{ c4.cached.tier1 }} / {{ c4.cached.tier2 }}
+- Koszt (USD): {{ c4.cost_text|md }}
+- Wycinki przetworzone: {{ c4.processed }} z {{ c4.sample_total }}
+- Rozstrzygnięte: decision\_model {{ c4.resolved.decision_model }} · general\_llm {{ c4.resolved.general_llm }} · human\_pending {{ c4.resolved.human_pending }} · not\_run {{ c4.resolved.not_run }}
+- Zatrzymanie płatnej pętli: {{ c4.stop_text|md }}
+
+### Zgodność z roboczą referencją (poprawne / ocenione)
+
+> {{ texts.labels|md }} {{ texts.model|md }}
+
+| Zakres | Zgodne | Ocenione |
+|---|---:|---:|
+{% for a in c4.accuracy %}
+| {{ a.label|md }} | {{ a.correct }} | {{ a.evaluated }} |
+{% endfor %}
+
+{{ c4.evaluation_note|md }}
+
+Kolejka ręczna według kodu: {% for reason, n in c4.manual_by_reason.items() %}{{ reason|md }} {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
+
+{% else %}
+**C4: nie uruchomiono (not run).** {{ c4.reason|md }}
+
+> {{ texts.labels|md }} {{ texts.model|md }}
+
+{% endif %}
+## C1 — brakujące atrybuty
+
+{% if c1 %}
+| highway | Drogi | bez maxspeed\* | bez surface | bez lanes | bez lit |
+|---|---:|---:|---:|---:|---:|
+{% for r in c1.osm %}
+| {{ r.highway|md }} | {{ r.total|num }} | {% for a in ["maxspeed", "surface", "lanes", "lit"] %}{{ r.missing[a]|num }} ({{ (100.0 * r.missing[a] / r.total)|round(1)|string|replace(".", ",") }}%) | {% endfor %}
+
+{% endfor %}
+
+| Overture class | Segmenty | bez speed\_limits | bez road\_surface |
+|---|---:|---:|---:|
+{% for r in c1.overture %}
+| {{ r.class|md }} | {{ r.total|num }} | {{ r.missing_speed|num }} ({{ (100.0 * r.missing_speed / r.total)|round(1)|string|replace(".", ",") }}%) | {{ r.missing_surface|num }} ({{ (100.0 * r.missing_surface / r.total)|round(1)|string|replace(".", ",") }}%) |
+{% endfor %}
+
+{% endif %}
+{% if rows.C1 %}
+| task\_id | Kod | OSM way | Flagi | Zdjęcie | Opis |
+|---|---|---|---|---|---|
+{% for r in rows.C1 %}
+| {{ r.task_id }} | {{ r.reason_code|md }} | {{ r.osm_id }} | {{ flags(r) }} | {{ plink(r.photo_url, "zdjęcie") }} ({{ r.photo_author|md }}, {{ r.photo_license|md }}) | {{ r.description|md }} |
+{% endfor %}
+{% else %}
+{{ empty("C1") }}
+{% endif %}
+
+## C2 — rozbieżności OSM–Overture
+
+{% if c2_stats %}
+Pary: {{ c2_stats.pairs|num }}. Porównania: {{ c2_stats.comparisons|num }} = kandydaci {{ c2_stats.candidates|num }} + nieporównywalne {{ c2_stats.not_comparable|num }} + zgodne {{ c2_stats.equal|num }}. Brak wartości po jednej stronie (sprawa C1): {{ c2_stats.missing|num }}.
+
+{% endif %}
+{% if rows.C2 %}
+| task\_id | Kod | Kierunek | OSM way | Segment | Reguła | OSM surowo | OSM znorm. | Overture surowo | Overture znorm. | Flagi | Zdjęcie | Opis |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+{% for r in rows.C2 %}
+| {{ r.task_id }} | {{ r.reason_code|md }} | {{ r.direction|md }} | {{ r.osm_id }} | {{ r.segment_id|md }} | {{ r.rule_index }} | {{ r.osm_value|md }} | {{ r.osm_normalized|md }} | {{ r.overture_raw|md }} | {{ r.overture_normalized|md }} | {{ flags(r) }} | {% if r.photo_id %}{{ plink(r.photo_url, "zdjęcie") }} ({{ r.photo_author|md }}, {{ r.photo_license|md }}){% else %}—{% endif %} | {{ r.description|md }} |
+{% endfor %}
+{% else %}
+{{ empty("C2") }}
+{% endif %}
+
+## C3 — niepewne dopasowania zdjęcie–droga
+
+> {{ texts.links|md }}
+
+{% if c3 %}
+| Flaga z pliku | Zdjęcia |
+|---|---:|
+{% for f, n in c3.file_flags.items() %}
+| {{ f|md }} | {{ n }} |
+{% endfor %}
+
+| Flaga własna | Zdjęcia |
+|---|---:|
+{% for f, n in c3.own_flags.items() %}
+| {{ f|md }} | {{ n }} |
+{% endfor %}
+
+Zdjęcia z co najmniej jedną flagą: **{{ c3.photos_with_flag|num }}** z {{ c3.photos_total|num }}.
+
+{% endif %}
+{% if rows.C3 %}
+| task\_id | Zdjęcie | OSM way | Segment | Dystans [m] | Flagi z pliku | Flagi własne |
+|---|---|---|---|---:|---|---|
+{% for r in rows.C3 %}
+| {{ r.task_id }} | {{ plink(r.photo_url, r.photo_id) }} ({{ r.photo_author|md }}, {{ r.photo_license|md }}) | {{ r.osm_id if r.osm_id is not none else "—" }} | {{ r.segment_id|md }} | {{ r.distance_m|num }} | {{ r.file_flags|md }} | {{ r.own_flags|md }} |
+{% endfor %}
+{% else %}
+{{ empty("C3") }}
+{% endif %}
+
+## C4 — znaki B-33: rozbieżność z mapą
+
+> {{ texts.heading|md }} {{ texts.model|md }}
+
+{% if rows.C4 %}
+| task\_id | Kod | Krok 1 (p) | Krok 2 (pewność) | Rozstrzygnięte przez | Mapillary | OSM way | Tagi prędkości OSM | Dystans [m] | Flagi | Zdjęcie | Opis |
+|---|---|---|---|---|---|---|---|---:|---|---|---|
+{% for r in rows.C4 %}
+| {{ r.task_id }} | {{ r.reason_code|md }} | {{ (r.tier1_answer or "—")|md }} ({{ r.tier1_probability|prob }}) | {% if r.tier2_answer %}{{ r.tier2_answer|md }} ({{ r.tier2_confidence|prob }}){% else %}—{% endif %} | {{ r.resolved_by|md }} | {{ r.mapillary_value|md }} | {{ r.osm_id }} | {{ r.osm_speed_tags|md }} | {{ r.distance_m|num }} | {{ flags(r) }} | {{ plink(r.photo_url, "zdjęcie") }} ({{ r.photo_author|md }}, {{ r.photo_license|md }}) | {{ r.description|md }} |
+{% endfor %}
+{% else %}
+{{ empty("C4") }}{% if c4.status != "run" %} C4: not run.{% endif %}
+
+{% endif %}
+
+## Kolejka ręczna znaków
+
+{% if rows["C4-manual"] %}
+| task\_id | Kod przyczyny | Zdjęcie i atrybucja | Krok 1 (p) | Krok 2 (pewność) | Opis |
+|---|---|---|---|---|---|
+{% for r in rows["C4-manual"] %}
+| {{ r.task_id }} | {{ r.reason_code|md }} | {{ plink(r.photo_url, "pełne zdjęcie") }} ({{ r.photo_author|md }}, {{ r.photo_license|md }}) | {{ (r.tier1_answer or "—")|md }} ({{ r.tier1_probability|prob }}) | {{ (r.tier2_answer or "—")|md }} ({{ r.tier2_confidence|prob }}) | {{ r.description|md }} |
+{% endfor %}
+{% else %}
+Żaden znak nie wymaga ręcznej kontroli.
+{% endif %}
+
+## Nieporównywalne
+
+Razem: **{{ nc_total|num }}**. Pełna lista z wartościami oryginalnymi: {{ nc_file|md }}.
+
+> {{ texts.outside|md }}
+
+| Atrybut | Kod przyczyny | Liczba |
+|---|---|---:|
+{% for n in nc_counts %}
+| {{ (n.attribute or "—")|md }} | {{ n.reason_code|md }} | {{ n.count|num }} |
+{% endfor %}
+
+## Tylko przestrzenne
+
+{% if spatial_only %}
+| Zdjęcie | OSM way | Segment | Dystans [m] |
+|---|---|---|---:|
+{% for s in spatial_only %}
+| {{ s.photo_id|md }} | {{ s.osm_way_id|md }} | {{ s.overture_id|md }} | {{ s.distance_m|md }} |
+{% endfor %}
+{% else %}
+Brak.
+{% endif %}
+
+## Mapowanie rodzin nawierzchni
+
+| Źródło | Wartość | Rodzina |
+|---|---|---|
+{% for s, v, f in surface_mapping %}
+| {{ s }} | {{ v|md }} | {{ f }} |
+{% endfor %}
+
+Wartości spoza mapowania (unknown): {% for v, n in unknown_surface %}{{ v|md }} ({{ n|num }}){% if not loop.last %}, {% endif %}{% else %}brak{% endfor %}.
+
+## Zastrzeżenia
+
+- {{ texts.candidate|md }}
+- {{ texts.model|md }}
+- {{ texts.labels|md }}
+- {{ texts.outside|md }}
+- {{ texts.heading|md }}
+- {{ texts.links|md }}
+
+{{ meta.attribution|md }}

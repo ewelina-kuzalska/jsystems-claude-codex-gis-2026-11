@@ -47,3 +47,21 @@ def build_tasks(candidates: list[Candidate]) -> list[Task]:
         tid = task_id(c)
         seen.setdefault(tid, Task(task_id=tid, candidate=c))
     return sorted(seen.values(), key=_sort_key)
+
+
+def count_by_check(tasks: list[Task]) -> dict[str, int]:
+    """Liczba zadań per kontrola, zawsze ze wszystkimi kluczami (AC-30, ADR-004 §3.7)."""
+    counts = dict.fromkeys(CHECK_ORDER, 0)
+    for t in tasks:
+        counts[t.candidate.check] += 1
+    return counts
+
+
+def count_by_reason(tasks: list[Task]) -> list[tuple[str, str, int]]:
+    out: dict[tuple[str, str], int] = {}
+    for t in tasks:
+        key = (t.candidate.check, t.candidate.reason_code)
+        out[key] = out.get(key, 0) + 1
+    return sorted(
+        ((c, r, n) for (c, r), n in out.items()), key=lambda x: (CHECK_ORDER.index(x[0]), x[1])
+    )

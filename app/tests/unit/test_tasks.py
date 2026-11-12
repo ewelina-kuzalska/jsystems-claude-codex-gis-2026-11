@@ -56,3 +56,17 @@ def test_deterministic_order():
         ("C4-manual", "unreadable", None, "x"),
     ]
     assert build_tasks(list(reversed(cands))) == build_tasks(cands)
+
+
+def test_counts():
+    from map_qa.tasks import count_by_check, count_by_reason
+
+    ts = build_tasks(
+        [
+            Candidate(check="C1", reason_code="missing_lit", osm_id=1),
+            Candidate(check="C1", reason_code="missing_surface", osm_id=1),
+            Candidate(check="C3", reason_code="uncertain_link", photo_id="p"),
+        ]
+    )
+    assert count_by_check(ts) == {"C1": 2, "C2": 0, "C3": 1, "C4": 0, "C4-manual": 0}
+    assert count_by_reason(ts)[0] == ("C1", "missing_lit", 1)
