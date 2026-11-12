@@ -1,6 +1,7 @@
 # ADR-004: Raport Markdown/HTML, eksport GeoJSON i CSV
 
 **Data:** 2026-11-03
+**Aktualizacja:** 2026-11-12, ustalenia z profilu M2 ([`reports/map-qa/profile.md`](../../reports/map-qa/profile.md)): dostępność miniatur, zastrzeżenie o etykietach referencyjnych, kod `outside_snapshot`
 **Status:** Accepted
 **Relates to:** [`000-main-architecture.md`](000-main-architecture.md)
 
@@ -62,6 +63,9 @@ Pokrywa AC-30–AC-36 i AC-38 z PRD oraz sekcję 9 PRD.
   3. dla C4: `signs/crops/` i `signs/photos/`.
 - **Kopiowanie:** obraz kopiujemy do `images/<photo_id>.<ext>`, a HTML i Markdown odwołują się do niego ścieżką względną `images/…`. Bez base64 i bez ścieżek bezwzględnych (AC-31).
 - **Brak obrazu:** tekst „Obraz niedostępny lokalnie” oraz link do źródła.
+- **Stan danych (profil M2 §1):** katalog `data/` nie istnieje, a `offline/` ma 40 z 561 zdjęć. Znaki mają komplet 119 wycinków i pełnych kadrów w `signs/`. Bez pobrania większość zadań C1 i C3 pokaże „Obraz niedostępny lokalnie”.
+  - **Decyzja (użytkownik, 2026-11-12, profil §10 pytanie 2, wariant A):** pipeline nie pobiera zdjęć sam (PRD wyklucza API na żywo). Raport działa na `offline/` i linkach. Pełne pobranie (`download_photos.py` do ignorowanego `data/photos/`, z kontrolą hashy) to ręczny krok przed Manual QA etapu raportu.
+  - Podsumowanie raportu pokazuje licznik „zdjęcia z lokalną miniaturą / wszystkie zdjęcia w zadaniach”.
 - **Przy każdym obrazie:** autor, licencja i link do strony źródłowej, wzięte z `photos.csv`, `offline/ATTRIBUTION.csv` albo `signs/signs.csv` (AC-32).
 - **Blok atrybucji** w nagłówku raportu i w metadanych eksportu: „© OpenStreetMap contributors (ODbL 1.0)”, atrybucja Overture Maps Foundation dla wydania `overture_release` (ODbL 1.0) oraz „Zdjęcia: CC BY-SA 4.0, autorzy przy każdym zdjęciu”.
 
@@ -116,6 +120,8 @@ Pokrywa AC-30–AC-36 i AC-38 z PRD oraz sekcję 9 PRD.
 ### 3.8 Teksty obowiązkowe (stałe w szablonie, po polsku)
 - „Kandydat wymaga sprawdzenia. Różnica między źródłami nie dowodzi błędu mapy.” (AC-36)
 - „Odczyt modelu nie jest prawdą terenową.”
+- „Etykiety referencyjne znaków pochodzą z odczytów modeli AI i nie są prawdą terenową.” (ADR-003 §3.9; w bloku accuracy C4)
+- „Znaki spoza obszaru snapshotu są odczytywane, ale nie są porównywane z mapą.” (ADR-002 §3.4; w sekcji „Nieporównywalne”, przy kodzie `outside_snapshot`)
 - „Kierunek aparatu nie jest kierunkiem jazdy. Najbliższa droga nie dowodzi, że znak jej dotyczy.” (AC-29)
 - „Dopasowania zdjęć do dróg są kandydatami w promieniu 25 m, nie prawdą terenową.”
 - Każdy kandydat ma pole `description_pl`, opisujące problem i możliwe przyczyny fałszywego alarmu (flagi). Nigdy nie stwierdza, że mapa jest błędna.

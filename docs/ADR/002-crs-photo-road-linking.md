@@ -1,7 +1,7 @@
 # ADR-002: CRS, EPSG:2180 i kontrola dopasowań zdjęcie–droga (C3)
 
 **Data:** 2026-11-03
-**Aktualizacja:** 2026-11-12, ustalenia z profilu M2 ([`reports/map-qa/profile.md`](../../reports/map-qa/profile.md)): `heading_diff_deg` jest nieskierowany (0–90), flaga `outside_standard_25m`, separator flag `;`
+**Aktualizacja:** 2026-11-12, ustalenia z profilu M2 ([`reports/map-qa/profile.md`](../../reports/map-qa/profile.md)): `heading_diff_deg` jest nieskierowany (0–90), flaga `outside_standard_25m`, separator flag `;`, porównanie CRS przez `pyproj.CRS`, znaki spoza snapshotu (`outside_snapshot`)
 **Status:** Accepted
 **Relates to:** [`000-main-architecture.md`](000-main-architecture.md)
 
@@ -45,6 +45,7 @@
   - OGC:CRS84 → EPSG:2180 (Overture),
   - EPSG:2180 → EPSG:4326 (eksport).
 - **CRS z danych:** CRS warstwy bierzemy z metadanych GeoParquet. GeoPandas przy braku CRS przyjmuje OGC:CRS84. Jeśli metadane nie zgadzają się z `sources.json` (`osm.crs`, `overture.crs`), zwracamy `InputError(crs_mismatch)`.
+  - **Porównanie przez obiekty `pyproj.CRS`, nie przez napisy.** Profil M2 pokazał, że GeoPandas zwraca CRS OSM jako pełny PROJJSON (WGS 84, `id: EPSG:4326`), a Overture jako `OGC:CRS84`. Porównujemy `CRS.from_user_input(sources_json_value) == gdf.crs`. Dla OSM akceptujemy też równość `to_epsg() == 4326`. Test obejmuje oba prawdziwe pliki.
 - **Odległości:** tylko w EPSG:2180, po transformacji obu warstw. Raport zaokrągla do 0,1 m (AC-17). Nigdy nie liczymy odległości w stopniach.
 - **Azymut geodezyjny:** liczymy `Geod(ellps="GRS80").inv` między dwoma punktami przeliczonymi z 2180 z powrotem do 4326. Wynik jest w stopniach od północy rzeczywistej, w zakresie [0, 360). To ta sama metoda co w `sources.json` („converted back to true-north geodesic bearing”). Zbieżność południków w 2180 nie wpływa wtedy na wynik.
 
@@ -94,6 +95,9 @@ Dla każdego wiersza `photo_road_links.csv` z `osm_way_id`:
 - **Źródło:** `signs/nearest_osm.csv` (`osm_way_id`, `maxspeed`, `maxspeed_forward`, `maxspeed_backward`, `maxspeed_conditional`, `oneway`, `match_flags`, `distance_m`, `heading_diff_deg`) i `signs/signs.csv` (`compass_angle`, współrzędne aparatu).
 - **Zakres `heading_diff_deg`:** profil M2 pokazał 0,01–87,86°, więc wartość jest **nieskierowana (0–90)** i nie odróżnia kierunków. Kierunek liczymy sami, metodą z punktu 3.2: `directed_diff` między `compass_angle` a styczną way. `compass_angle` jest wypełniony we wszystkich 119 wierszach `signs.csv`.
 - **Dane do porównania:** 97 ze 119 najbliższych dróg ma `maxspeed`, tylko 2 mają tagi kierunkowe, a 9 ma `maxspeed_conditional`. 22 drogi bez wartości dadzą `osm_missing_speed` (ADR-003 §3.8).
+- **Znaki spoza snapshotu** (profil M2 §5). Zestaw `signs/` obejmuje też inne miasta. Dla 24 ze 119 znaków `nearest_osm.source = osm_api`: Warszawa 11, Poznań 6, Kraków 4, Łódź, Wrocław i Gdańsk po 1. Ich `osm_way_id` **nie istnieje** w `osm_roads.parquet`, więc nie ma geometrii do stycznej ani pełnego `tags`. Tylko 95 znaków leży w bbox Krakowa z PRD i ma way w snapshocie.
+  - **Decyzja (użytkownik, 2026-11-12, profil §10 pytanie 1, wariant A):** `sign_road_context` dla way spoza snapshotu zwraca `chosen_direction = unknown` i status `outside_snapshot`. Znak jest odczytywany i oceniany (ADR-003 §3.9), ale **nie jest porównywany z mapą**. Trafia do „not comparable / `outside_snapshot`”. Uzasadnienie: kontekst z OSM API ma inną datę niż snapshot (brak `osm_snapshot_timestamp`, jest `context_retrieved_at`), a PRD ogranicza obszar do Krakowa.
+  - Rozpoznanie: `nearest_osm.source ≠ osm_roads.parquet` **albo** brak `osm_way_id` w `osm_roads`. Sprawdzamy oba warunki, a niezgodność między nimi jest błędem danych zgłaszanym w raporcie.
 - **Way bez tagów kierunkowych:** porównujemy z `maxspeed` (`both`).
 - **Way z `maxspeed:forward` lub `maxspeed:backward`:**
   - `directed_diff` ≤ 45° → wartość `forward`,
@@ -266,6 +270,8 @@ sequenceDiagram
 | Droga serwisowa | Integration | Prawdziwy link z `service_way` | Link niepewny, kandydat oznaczony „uncertain link” | `access = private` daje `restricted_access` |
 | Most / tunel | Unit | Way z `bridge = yes` w 25 m | `grade_separated_nearby` | `layer = 0` bez flagi |
 | Kierunek znaku | Unit | Way z `maxspeed:forward` / `:backward`, `compass_angle` 10° / 170° / 90° | forward / backward / `direction_unknown` | Brak `compass_angle` daje `direction_unknown` |
+| Znak spoza snapshotu | Integration | Prawdziwy wiersz `nearest_osm.csv` z `source = osm_api` (np. `area = Warszawa`) | `outside_snapshot`, brak porównania z mapą, odczyt i ewaluacja nadal działają | Znak z Krakowa z `osm_api` (4 przypadki) |
+| CRS z pliku | Integration | Prawdziwe `osm_roads.parquet` i `overture_segments.parquet` | Brak `crs_mismatch` (PROJJSON 4326 i CRS84) | Kopia z podmienionym CRS → `crs_mismatch` |
 
 ### Techniczne kryteria akceptacji
 - **TAC-002-01:** Żadna funkcja odległości nie przyjmuje geometrii w CRS innym niż EPSG:2180. Wywołanie z 4326 rzuca błąd (test).

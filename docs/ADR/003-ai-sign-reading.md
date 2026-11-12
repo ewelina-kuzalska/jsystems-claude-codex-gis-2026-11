@@ -1,7 +1,7 @@
 # ADR-003: Odczyt znaku B-33 przez AI, eskalacja, budżet i cache (C4)
 
 **Data:** 2026-11-03
-**Aktualizacja:** 2026-11-12, ustalenia z profilu M2 ([`reports/map-qa/profile.md`](../../reports/map-qa/profile.md)): mapowanie etykiet po `sign_value`, brak metadanych w wycinkach, wszystkie wartości etykiet w opcjach kroku 1
+**Aktualizacja:** 2026-11-12, ustalenia z profilu M2 ([`reports/map-qa/profile.md`](../../reports/map-qa/profile.md)): mapowanie etykiet po `sign_value`, brak metadanych w wycinkach, wszystkie wartości etykiet w opcjach kroku 1, pochodzenie etykiet (zgodność dwóch modeli), znaki spoza snapshotu
 **Status:** Accepted
 **Relates to:** [`000-main-architecture.md`](000-main-architecture.md)
 
@@ -156,6 +156,7 @@ Pierwsze prawdziwe wywołania mają te fakty zmierzyć i zapisać w sekcji 9.
 
 ### 3.8 Porównanie z mapą
 - Tylko wycinki z wynikiem ostatecznym AI (AC-27).
+- Tylko znaki z way w snapshocie. 24 ze 119 znaków ma kontekst z OSM API spoza snapshotu i dostaje „not comparable / `outside_snapshot`” (ADR-002 §3.4; decyzja użytkownika 2026-11-12, wariant A). Wybór próbki (§3.1) i ewaluacja (§3.9) obejmują nadal wszystkie 119 wycinków.
 - **`SignRoadContext`** (ADR-002, punkt 3.4):
   - wartość liczbowa AI ≠ `osm_value_kmh` daje `C4 / sign_mismatch`,
   - brak wartości OSM daje `C4 / osm_missing_speed` (uzupełnienie C1),
@@ -172,7 +173,8 @@ Pierwsze prawdziwe wywołania mają te fakty zmierzyć i zapisać w sekcji 9.
   - Pole `negative_type` (`no_speed_sign`, `no_entry`, `zone_end`, `zone`, `weight`, `no_overtaking`, `cancelled_sign`, `false_positive_object`, `no_stopping`, `limit_end`, `unreadable`) służy tylko do opisu w raporcie. **Nie mapujemy po nim**, bo ma je też wiersz `unreadable`.
   - Inna wartość `sign_value` wyklucza wiersz z ewaluacji z kodem `label_unparsable`, raportowanym z licznością.
 - **Etykiety w mianowniku:** tylko `status = certain`. Etykiety `uncertain` raportujemy osobno, z liczebnością. Profil M2: 115 `certain` (89 liczbowych, 25 `none`, 1 `unreadable`) i 4 `uncertain` (wszystkie `none`).
-- **Etykieta `unreadable`:** wynik AI ostateczny (liczba lub `none`) dla takiego wycinka liczymy jako błędny. Wycinek, który trafił do kolejki ręcznej, jest poza mianownikiem, jak każdy inny w kolejce.
+- **Etykieta `unreadable`** (decyzja użytkownika 2026-11-12, profil §10 pytanie 3, wariant A): wynik AI ostateczny (liczba lub `none`) dla takiego wycinka liczymy jako błędny. Wycinek, który trafił do kolejki ręcznej, jest poza mianownikiem, jak każdy inny w kolejce.
+- **Pochodzenie etykiet** (README danych, profil M2 §5): odczyt agenta Codex i niezależny odczyt modelu GLM-5.3-Flash. `certain` oznacza zgodność dwóch modeli, nie pewność terenową. Raport podpisuje więc metryki AC-28 jako **„zgodność z roboczą referencją”**, a nie „poprawność”, i dodaje zdanie: „Etykiety referencyjne pochodzą z odczytów modeli AI i nie są prawdą terenową”. Rozbieżność AI z etykietą wymaga obejrzenia wycinka przez człowieka.
 - Wszystkie liczbowe etykiety w próbce mieszczą się w opcjach kroku 1 (10–140 co 10). Opcja `other` nie powinna więc wystąpić jako poprawna odpowiedź.
 - **Metryki** (AC-28), wszystkie jako „poprawne / ocenione”:
   - (a) ostateczne wyniki kroku 1,

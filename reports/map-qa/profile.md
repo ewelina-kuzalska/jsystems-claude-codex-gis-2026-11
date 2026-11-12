@@ -341,16 +341,16 @@ To osobny zbiór: etykiety wizualne **zdjęć** z `photos.csv`, 320 wierszy dla 
 
 ## 7. Punkty otwarte (decyzja przed implementacją danego etapu)
 
-Punkty 1–5 rozstrzygnięto w aktualizacji ADR z 2026-11-12.
+Wszystkie punkty rozstrzygnięto 2026-11-12: 1–5 w aktualizacji ADR, 6–8 decyzją użytkownika (§10, warianty A, A, A).
 
 1. ✅ **`sources[].between` w Overture** (C2): way może pokrywać tylko część segmentu. Przyjęto wariant (b), nowy kod „not comparable” `partial_source` (ADR-001 §3.3, §3.6).
 2. ✅ **Mapowanie `surface`:** dopisano `concrete_slabs`, `concrete:slabs`, `metal_grid` → paved. Literówki zostają `unknown`. Dodano mapowanie Overture (ADR-001 §3.4).
 3. ✅ **Flaga `outside_standard_25m`:** przenoszona jak każda flaga z `match_flags` (ADR-002 §3.4).
 4. ✅ **Mapowanie etykiet** po `sign_value` (ADR-003 §3.9).
 5. ✅ **`road_surface` bez `when`**, kolumna OSM `tags` (ADR-001 §3.2, §3.3).
-6. ⏳ **Miniatury:** bez uruchomienia `download_photos.py` raport ma obrazy tylko dla 40 zdjęć `offline/` i 119 wycinków znaków (pytanie 2 w §10).
-7. ⏳ **Znaki spoza snapshotu:** 24 / 119 znaków ma kontekst OSM z OSM API (pytanie 1 w §10).
-8. ⏳ **Etykieta `unreadable` w ewaluacji:** decyzja dopisana w ADR-003 §3.9 do akceptacji (pytanie 3 w §10).
+6. ✅ **Miniatury:** bez uruchomienia `download_photos.py` raport ma obrazy tylko dla 40 zdjęć `offline/` i 119 wycinków znaków. Decyzja: `offline/` + linki, ręczne `download_photos.py` przed Manual QA (ADR-004 §3.3).
+7. ✅ **Znaki spoza snapshotu:** 24 / 119 znaków ma kontekst OSM z OSM API. Decyzja: odczyt i ewaluacja wszystkich 119, porównanie z mapą tylko 95, reszta `outside_snapshot` (ADR-002 §3.4).
+8. ✅ **Etykieta `unreadable` w ewaluacji:** ostateczna odpowiedź AI liczona jako błędna (ADR-003 §3.9).
 
 ---
 
@@ -386,7 +386,7 @@ Wniosek: tabele w Databricks to ten sam snapshot co pliki lokalne. Pipeline nada
 4. **Etykiety znaków to zgodność dwóch modeli (Codex + GLM-5.3-Flash), nie ground truth.** Mapujemy je po `sign_value`, a nie po `negative_type`. Mianownik accuracy to 115 `certain`. Raport C4 musi opisać accuracy jako zgodność z roboczą referencją.
 5. **Tylko 40 z 561 zdjęć ma lokalną miniaturę** (`offline/`), a katalog `data/` nie istnieje. Większość zadań C1 i C3 w raporcie HTML pokaże „Obraz niedostępny lokalnie”. Wpływa to na Manual QA (ADR-004) i na wartość raportu dla analityka.
 
-## 10. Trzy pytania do człowieka
+## 10. Trzy pytania do człowieka (odpowiedzi 2026-11-12: 1A, 2A, 3A)
 
 1. **Znaki spoza snapshotu (24 / 119):** czy w C4 odczytujemy i oceniamy wszystkie 119 wycinków, a z mapą porównujemy tylko 95 znaków z way w snapshocie, pozostałe oznaczając jako „not comparable / `outside_snapshot`”? Alternatywy: wykluczyć 24 znaki całkowicie albo porównywać je z surowymi tagami z `nearest_osm.csv` (OSM API, inna data niż snapshot). **Rekomendacja:** pierwszy wariant. Accuracy odczytu nie zależy od mapy, a porównanie z mapą wymaga tego samego snapshotu.
 2. **Miniatury:** czy przed implementacją raportu uruchamiamy `download_photos.py`? Pobiera z sieci do ignorowanego `data/photos/` i kontroluje hashe. Alternatywą jest raport z 40 miniaturami `offline/` (reszta jako link do źródła). **Rekomendacja:** na start `offline/` + linki, a pełne pobranie dopiero do Manual QA etapu raportu.
