@@ -26,3 +26,8 @@ def real_input() -> Path:
 @pytest.fixture
 def fixtures_dir() -> Path:
     return FIXTURES
+
+
+@pytest.fixture(scope="module")
+def fixtures_dir_module() -> Path:
+    return FIXTURES
