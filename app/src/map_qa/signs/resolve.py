@@ -68,8 +68,18 @@ def _cache_entry(cache: AiCache, reader, tier: int, item: CropItem):
     return key, cache.get(key)
 
 
-def select_sample(items: list[CropItem], cache: AiCache, reader, new_crop_budget: int):
-    """Najpierw wycinki z krokiem 1 w cache, potem nowe do `floor(limit/2)` (ADR-003 §3.1)."""
+def select_sample(
+    items: list[CropItem],
+    cache: AiCache,
+    reader,
+    new_crop_budget: int,
+    threshold: float | None = None,
+    limit: int | None = None,
+):
+    """Najpierw wycinki z krokiem 1 w cache, potem nowe do `floor(limit/2)` (ADR-003 §3.1).
+
+    Gdy podano próg i limit, liczbę nowych wycinków zmniejszamy tak, żeby najgorszy przypadek
+    (zaległe żądania kroku 2 dla wycinków z cache + 2 × nowe) mieścił się w limicie."""
     ordered = sorted(items, key=lambda x: x.photo_id)
     cached, new, invalid, not_run = [], [], [], []
     for item in ordered:
@@ -86,7 +96,20 @@ def select_sample(items: list[CropItem], cache: AiCache, reader, new_crop_budget
             new.append(item)
         else:
             not_run.append(item)
+    if threshold is not None and limit is not None:
+        pending = sum(_needs_tier2(cache, reader, item, threshold) for item in cached)
+        cap = max(0, (limit - pending) // 2)
+        not_run = new[cap:] + not_run
+        new = new[:cap]
+        not_run.sort(key=lambda x: x.photo_id)
     return cached + new + invalid, not_run
+
+
+def _needs_tier2(cache: AiCache, reader, item: CropItem, threshold: float) -> bool:
+    entry = _cache_entry(cache, reader, 1, item)[1]
+    interp = entry["interpretation"]
+    final = interp["answer"] in FINAL_TIER1 and interp["probability"] >= threshold
+    return not final and _cache_entry(cache, reader, 2, item)[1] is None
 
 
 def plan_sign_run(

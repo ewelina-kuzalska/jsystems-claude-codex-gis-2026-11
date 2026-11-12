@@ -227,3 +227,18 @@ def test_prepare_failure_fails_closed(tmp_path):  # przegląd T27: brak wyjątku
         "crop_invalid",
     )
     assert budget.used == 0
+
+
+def test_worst_case_fits_limit_with_cached_tier1_pending(tmp_path):  # ADR-003 §3.1, przegląd T27
+    first = [f"a{i:02d}" for i in range(12)]
+    cache = AiCache(tmp_path / "cache")
+    for p in first:  # krok 1 w cache (do eskalacji), krok 2 jeszcze nie
+        interp = {"answer": "unreadable", "probability": 0.9, "probabilities": None}
+        cache.put(f"1-sha-{p}", {"status": 200, "body": "{}", "interpretation": interp})
+    new = [f"b{i:02d}" for i in range(13)]
+    sample, _ = select_sample(
+        items(*first, *new), cache, FakeReader(), new_crop_budget=12, threshold=0.7, limit=25
+    )
+    plan = plan_sign_run(sample, cache, FakeReader(), threshold=0.7, limit=25, cost_limit=0.5)
+    assert plan.new_tier1 + plan.worst_tier2 <= 25
+    assert plan.new_tier1 == 6

@@ -157,7 +157,9 @@ def _c4_stage(cfg, snapshot, data, confirm, echo) -> C4Outcome:
     client = ai_client.OpenRouterClient()
     try:
         reader = ai_client.SignReader(client, cfg.tier1_model_id)
-        sample, not_run_items = select_sample(items, cache, reader, cfg.new_crop_budget)
+        sample, not_run_items = select_sample(
+            items, cache, reader, cfg.new_crop_budget, cfg.threshold, cfg.max_requests
+        )
         plan = plan_sign_run(
             sample,
             cache,
