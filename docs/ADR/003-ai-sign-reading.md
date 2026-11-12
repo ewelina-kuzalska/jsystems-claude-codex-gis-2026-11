@@ -139,6 +139,7 @@ Pierwsze prawdziwe wywołania mają te fakty zmierzyć i zapisać w sekcji 9.
   - `OPENROUTER_API_KEY` czytamy wyłącznie w `ai_client` w chwili budowy nagłówka.
   - Brak klucza przy `--with-signs` oznacza zero żądań, komunikat „brak klucza”, `resolved_by = not_run` i dalsze wykonanie C1–C3 (AC-37).
   - Logger httpx ma poziom WARNING. Nagłówki żądań nigdy nie są logowane.
+- **Niezweryfikowany kontrakt odpowiedzi** (zmiana 2026-11-12, review dokumentów): dopóki w `app/tests/fixtures/openrouter/` nie ma zapisanych prawdziwych odpowiedzi kroku 1 i kroku 2 (§8) i dopóki parser nie przeszedł na nich testów, `--with-signs` **nie wysyła żadnego żądania**, nawet z kluczem i z potwierdzeniem. C4 dostaje „not run” z powodem `contract_unverified`, a C1–C3 działają normalnie. Flagę ustawia w kodzie stała `RESPONSE_CONTRACT_VERIFIED`, którą zmieniamy na `True` dopiero w commicie z testami na zapisach.
 
 ### 3.7 Cache
 - **Lokalizacja:** `course-materials/exercise-data/map-qa/data/cache/ai/` (ignorowane przez git), nadpisywana przez `MAP_QA_CACHE_DIR`.
@@ -156,7 +157,7 @@ Pierwsze prawdziwe wywołania mają te fakty zmierzyć i zapisać w sekcji 9.
 
 ### 3.8 Porównanie z mapą
 - Tylko wycinki z wynikiem ostatecznym AI (AC-27).
-- Tylko znaki z way w snapshocie. 24 ze 119 znaków ma kontekst z OSM API spoza snapshotu i dostaje „not comparable / `outside_snapshot`” (ADR-002 §3.4; decyzja użytkownika 2026-11-12, wariant A). Wybór próbki (§3.1) i ewaluacja (§3.9) obejmują nadal wszystkie 119 wycinków.
+- Tylko znaki z way w snapshocie. 24 ze 119 znaków ma kontekst z OSM API spoza snapshotu i dostaje „not comparable / `outside_snapshot`” (ADR-002 §3.4; decyzja użytkownika 2026-11-12, wariant A). Znaki spoza snapshotu nadal mogą trafić do próbki (§3.1) i do ewaluacji (§3.9). Ewaluacja obejmuje wyłącznie **przetworzone** wycinki: jedno uruchomienie czyta najwyżej `floor(max_requests / 2)` nowych wycinków, a reszta ma `not_run`.
 - **`SignRoadContext`** (ADR-002, punkt 3.4):
   - wartość liczbowa AI ≠ `osm_value_kmh` daje `C4 / sign_mismatch`,
   - brak wartości OSM daje `C4 / osm_missing_speed` (uzupełnienie C1),

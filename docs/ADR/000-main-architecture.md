@@ -28,6 +28,7 @@ ADR-y:
 | [`002-crs-photo-road-linking.md`](002-crs-photo-road-linking.md) | CRS, EPSG:2180, kontrola dopasowań zdjęcie–droga, C3 |
 | [`003-ai-sign-reading.md`](003-ai-sign-reading.md) | Kontrakt modeli, eskalacja, budżet, cache, C4 |
 | [`004-report-export.md`](004-report-export.md) | Raport Markdown/HTML, GeoJSON, CSV, atrybucje |
+| [`005-cli-working-directory.md`](005-cli-working-directory.md) | Katalog roboczy CLI, ścieżki domyślne, uruchamianie z korzenia repo |
 
 **Warunki wstępne:**
 - Profil danych (krok M2) jest w [`reports/map-qa/profile.md`](../../reports/map-qa/profile.md) (2026-11-12). Punkty, które ADR oznaczał jako „do potwierdzenia w profilu”, rozstrzygnięto w ADR-001–003 (aktualizacja 2026-11-12). Tabela rozstrzygnięć jest w §6 profilu.
@@ -160,7 +161,7 @@ Opis koncepcyjny. Typy implementujemy jako dataclasses lub tabele pandas. Wszyst
   - `--yes` (potwierdza C4 bez pytania; do testów i automatyzacji).
 - **Wyjście:**
   - Kod 0: wszystkie cztery pliki zapisane. Również wtedy, gdy płatna pętla została zatrzymana zgodnie z AC-24 (to stan danych, nie błąd).
-  - Kod 2: błąd walidacji wejść lub manifestu (AC-01).
+  - Kod 2: błąd walidacji wejść, manifestu (AC-01) **lub opcji CLI**. Typer/Click zwraca kod 2 przy każdym błędzie użycia (np. `--max-requests 30`). Nie rozdzielamy tych przypadków kodem. Rozróżnia je polski komunikat na stderr, który testy sprawdzają razem z kodem.
   - Kod 3: błąd zapisu wyników.
   - Kod 4: niezgodność liczników między wynikami (TAC-05).
 - **Potwierdzenie C4:** CLI pokazuje plan i pyta „tak/nie” po polsku. Każda odpowiedź inna niż jawne „t”/„tak” oznacza uruchomienie bez C4 (AC-20). Przy `--yes` nie pyta.

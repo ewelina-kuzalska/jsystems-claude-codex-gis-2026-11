@@ -43,9 +43,10 @@
 2. Dla każdego pliku liczy SHA-256 strumieniowo, w blokach po 1 MiB.
    - Pierwszy brakujący plik albo niezgodny hash przerywa pracę błędem `InputError(file, reason)`, z kodem przyczyny `missing`, `hash_mismatch` lub `unreadable`.
    - Weryfikacja kończy się, zanim powstanie katalog wyników.
-3. Wymagane pliki: `osm_roads.parquet`, `overture_segments.parquet`, `photos.csv`, `photo_road_links.csv`, `traffic_signs.geojson`, `signs/signs.csv`, `signs/nearest_osm.csv`, `signs/labels.csv`. Pliki `signs/` są wymagane tylko z `--with-signs`. Jeśli nie ma ich w `sources.json`, sprawdzamy tylko, czy istnieją, i raportujemy to jako `hash_not_in_manifest`.
+3. Wymagane pliki: `osm_roads.parquet`, `overture_segments.parquet`, `photos.csv`, `photo_road_links.csv`, `signs/signs.csv`, `signs/nearest_osm.csv`, `signs/labels.csv`. Pliki `signs/` są wymagane tylko z `--with-signs`. Jeśli nie ma ich w `sources.json`, sprawdzamy tylko, czy istnieją, i raportujemy to jako `hash_not_in_manifest`.
    - Profil M2 potwierdził, że w dostarczonym snapshocie **żaden** plik `signs/` nie ma hasha w `sources.json.files`, więc ścieżka `hash_not_in_manifest` jest zawsze aktywna dla C4. Integralność wycinków zapewnia osobno `crop_sha256` z `signs.csv` (ADR-003 §3.2).
-4. Pliki opcjonalne (`signs/photos/`, `signs/crops/`, `offline/`, pobrane zdjęcia w `data/`) nie przerywają pracy. Brak pliku jest odnotowany na poziomie wiersza (PRD, sekcja 4.4).
+4. Pliki opcjonalne (`signs/photos/`, `signs/crops/`, `offline/`, pobrane zdjęcia w `data/`, `traffic_signs.geojson`) nie przerywają pracy.
+   - `traffic_signs.geojson` jest w manifeście, ale **żadna kontrola MVP go nie czyta**. Wartość Mapillary dla C4 pochodzi z `signs/signs.csv` (`mapillary_value`). Gdy plik istnieje, weryfikujemy jego hash (AC-01), a gdy go brakuje, odnotowujemy to w raporcie bez przerywania pracy (zmiana 2026-11-12, review dokumentów). Brak pliku jest odnotowany na poziomie wiersza (PRD, sekcja 4.4).
 5. Odczyt idzie przez jedno połączenie DuckDB w pamięci, z załadowanym rozszerzeniem `spatial` (`INSTALL`/`LOAD`, bo nie ładuje się automatycznie). Parquet czytamy zwykłym czytnikiem, który przy załadowanym `spatial` sam zamienia kolumny geometrii na `GEOMETRY`. Do Pythona geometria trafia jako WKB.
 6. Liczności wierszy porównujemy z `rows` w `sources.json` (OSM 99 768, Overture 85 405, zdjęcia 561, linki 561). Przy niezgodności zwracamy `InputError(row_count_mismatch)`.
 7. Wejścia są otwierane tylko do odczytu. Nic nie jest zapisywane w katalogu wejść poza `data/cache/` (ADR-003).
