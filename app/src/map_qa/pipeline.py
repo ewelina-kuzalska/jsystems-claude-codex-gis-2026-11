@@ -6,9 +6,26 @@ import csv
 import io
 import json
 import re
+from collections import Counter
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 
-from map_qa.model import CHECK_ORDER
+from map_qa.checks.c1 import check_missing
+from map_qa.checks.c2 import check_discrepancy
+from map_qa.checks.c3 import check_uncertain, label_uncertain
+from map_qa.config import RunConfig
+from map_qa.crs import to_2180
+from map_qa.export import export_csv, export_geojson
+from map_qa.inputs import load_links, load_osm, load_overture_raw, load_photos, verify_snapshot
+from map_qa.linking import OsmIndex, recheck_links
+from map_qa.model import CHECK_ORDER, NotComparable
+from map_qa.normalize.surface import surface_mapping
+from map_qa.render import ReportInput, build_context, prepare_images, render_html, render_markdown
+from map_qa.tasks import build_tasks, count_by_check, count_by_reason
+
+CONTRACT_VERSIONS = {"task_id": "V1", "export": "V1"}
 
 
 class RunDirError(Exception):
@@ -93,3 +110,201 @@ def verify_counts(run_dir: Path, expected: dict[str, int]) -> None:
         if any(v != expected.get(check, 0) for v in per_source.values()):
             bad = {k: v for k, v in per_source.items() if v != expected.get(check, 0)}
             raise CountMismatch(check, bad, expected.get(check, 0))
+
+
+# --- Pełny przebieg (PRD 4.1) -------------------------------------------------------
+
+
+@dataclass
+class C4Outcome:
+    candidates: list = field(default_factory=list)
+    not_comparable: list = field(default_factory=list)
+    block: dict = field(default_factory=dict)
+    processed: int = 0
+
+
+@dataclass
+class RunResult:
+    run_dir: Path
+    summary: dict
+    tasks: list
+
+
+def c4_not_run(reason: str) -> C4Outcome:
+    return C4Outcome(block={"status": "not_run", "reason": reason})
+
+
+def _c4_stage(cfg, snapshot, data, confirm, echo) -> C4Outcome:
+    if not cfg.with_signs:
+        return c4_not_run("C4 nie zostało włączone (brak --with-signs).")
+    if not confirm(None):
+        return c4_not_run("Brak potwierdzenia planu żądań (odpowiedź inna niż „tak”).")
+    return c4_not_run("Odczyt znaków nie jest jeszcze dostępny w tej wersji.")
+
+
+def _unknown_surface(osm_tags: list[dict], overture_values: list) -> list[tuple[str, int]]:
+    known = {(s, v) for s, v, _ in surface_mapping()}
+    counter: Counter = Counter()
+    for tags in osm_tags:
+        value = tags.get("surface", "").strip()
+        if value and ("osm", value) not in known:
+            counter[f"osm: {value}"] += 1
+    for value in overture_values:
+        if value and ("overture", value) not in known:
+            counter[f"overture: {value}"] += 1
+    return sorted(counter.items())
+
+
+NC_COLUMNS = [
+    "check",
+    "reason_code",
+    "attribute",
+    "direction",
+    "osm_id",
+    "segment_id",
+    "rule_index",
+    "photo_id",
+    "osm_raw",
+    "overture_raw",
+]
+
+
+def _write_not_comparable(path: Path, rows: list[NotComparable]) -> None:
+    with path.open("w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerow(NC_COLUMNS)
+        for n in rows:
+            writer.writerow(["" if getattr(n, c) is None else getattr(n, c) for c in NC_COLUMNS])
+
+
+def run(
+    cfg: RunConfig,
+    started: datetime | None = None,
+    echo: Callable[[str], None] = print,
+    confirm: Callable[[object], bool] = lambda plan: False,
+) -> RunResult:
+    """Pełny przebieg: wejścia → C1–C3 → (C4) → zadania → 4 pliki → kontrola liczników."""
+    started = started or datetime.now(UTC)
+    run_id = started.strftime("%Y%m%dT%H%M%SZ")
+
+    snapshot = verify_snapshot(cfg.input_dir, with_signs=cfg.with_signs)
+    echo(
+        f"Snapshot OK: ekstrakt OSM {snapshot.osm_extract_date}, wydanie Overture "
+        f"{snapshot.overture_release}, utworzony {snapshot.created_at}."
+    )
+    echo(
+        "Wiersze: drogi OSM {osm_roads}, segmenty Overture {overture_segments}, zdjęcia "
+        "{photos}, linki {photo_road_links} (zgodne z manifestem).".format(**snapshot.rows)
+    )
+    for warning in snapshot.warnings:
+        echo(f"Uwaga: {warning}")
+
+    osm = load_osm(snapshot)
+    overture = load_overture_raw(snapshot)
+    photos = load_photos(snapshot)
+    links = load_links(snapshot)
+
+    c1_summary, c1 = check_missing(osm, overture, links, photos)
+    echo(f"C1 brakujące atrybuty: {len(c1)} zadań (drogi ze zdjęciem).")
+    c2 = check_discrepancy(
+        osm, overture, links, snapshot.osm_extract_date, snapshot.overture_release, photos
+    )
+    echo(
+        f"C2 OSM vs Overture: {len(c2.candidates)} kandydatów, "
+        f"{len(c2.not_comparable)} nieporównywalnych, {c2.stats['comparisons']} porównań."
+    )
+    index = OsmIndex.build(osm, to_2180(osm, "osm_roads.parquet").geometry)
+    rechecked = recheck_links(links, photos, index)
+    c3_summary, c3 = check_uncertain(rechecked, photos)
+    echo(f"C3 niepewne dopasowania: {c3_summary['photos_with_flag']} zdjęć z flagą.")
+
+    data = {"osm": osm, "index": index, "photos": photos, "links": rechecked}
+    c4 = _c4_stage(cfg, snapshot, data, confirm, echo)
+    if c4.block.get("status") != "run":
+        echo(f"C4: nie uruchomiono — {c4.block.get('reason', '')}")
+
+    label_uncertain(c1 + c2.candidates, rechecked)
+    tasks = build_tasks(c1 + c2.candidates + c3 + c4.candidates)
+    counts = count_by_check(tasks)
+    not_comparable = c2.not_comparable + c4.not_comparable
+    rows_checked = {
+        "C1": int(len(osm)),
+        "C2": c2.stats["comparisons"],
+        "C3": int(len(links)),
+        "C4": c4.processed,
+        "C4-manual": c4.processed,
+    }
+    summary = {
+        "run_id": run_id,
+        "run_started_at": started.isoformat(timespec="seconds"),
+        "snapshot": {
+            "osm_extract_date": snapshot.osm_extract_date,
+            "overture_release": snapshot.overture_release,
+            "created_at": snapshot.created_at,
+            "rows": snapshot.rows,
+        },
+        "threshold": cfg.threshold,
+        "counts": counts,
+        "counts_by_reason": [list(x) for x in count_by_reason(tasks)],
+        "rows_checked": rows_checked,
+        "c1": c1_summary,
+        "c2": c2.stats,
+        "c3": c3_summary,
+        "c4": c4.block,
+        "not_comparable": dict(sorted(Counter(n.reason_code for n in not_comparable).items())),
+        "spatial_only": len(c2.spatial_only),
+    }
+
+    partial = prepare_run_dir(cfg.output_dir, run_id)
+    try:
+        filenames = dict(zip(photos["photo_id"], photos["filename"], strict=True))
+        images = prepare_images(tasks, cfg.input_dir, partial, filenames)
+        write_summary(partial, summary)
+        meta = {
+            "osm_extract_date": snapshot.osm_extract_date,
+            "overture_release": snapshot.overture_release,
+            "snapshot_created_at": snapshot.created_at,
+            "threshold": cfg.threshold,
+            "contract_versions": CONTRACT_VERSIONS,
+        }
+        export_geojson(tasks, meta, partial / "tasks.geojson")
+        export_csv(tasks, partial / "tasks.csv", snapshot.overture_release)
+        _write_not_comparable(partial / "not_comparable.csv", not_comparable)
+        overture_values = [
+            json.loads(r).get("value") for lst in overture["road_surface"] for r in lst
+        ]
+        ctx = build_context(
+            ReportInput(
+                snapshot=summary["snapshot"],
+                run_started_at=summary["run_started_at"],
+                threshold=cfg.threshold,
+                tasks=tasks,
+                images=images,
+                rows_checked=rows_checked,
+                c1=c1_summary,
+                c2_stats=c2.stats,
+                c3=c3_summary,
+                c4=c4.block,
+                not_comparable=not_comparable,
+                spatial_only=c2.spatial_only,
+                surface_mapping=surface_mapping(),
+                unknown_surface=_unknown_surface(list(index.tags.values()), overture_values),
+                warnings=list(snapshot.warnings),
+            )
+        )
+        render_html(ctx, partial / "report.html")
+        render_markdown(ctx, partial / "report.md")
+    except OSError as exc:
+        raise RunDirError(f"Błąd zapisu wyników w {partial}: {exc}") from exc
+    try:
+        verify_counts(partial, counts)
+    except CountMismatch as exc:
+        exc.partial = partial
+        raise
+    run_dir = finalize_run_dir(partial)
+
+    echo("Kandydaci per kontrola: " + ", ".join(f"{k} {v}" for k, v in counts.items()))
+    echo("Wyniki:")
+    for name in ("report.md", "report.html", "tasks.geojson", "tasks.csv"):
+        echo(f"  {run_dir / name}")
+    return RunResult(run_dir=run_dir, summary=summary, tasks=tasks)
