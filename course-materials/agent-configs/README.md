@@ -24,6 +24,15 @@ The browser on your own computer cannot hand the login back to a VM, so log in w
 - **Claude Code CLI:** run `claude`, then `/login` (or `claude auth login`). Open the URL (press `c` to copy it), sign in, copy the code the browser shows and paste it at "Paste code here if prompted". In Windows Terminal use right-click or Shift+Insert if Ctrl+V does nothing.
 - **Claude Desktop app:** choose the e-mail login, not "Continue with Google". Open the link from the e-mail on your own computer, cancel the prompt to open the Claude app, copy the code from the page and paste it into the app on the VM.
 - If your address already belongs to an employer Claude or ChatGPT organization, pick the training organization or workspace after signing in.
+- **Activate in the browser first.** Accept the invitations and finish the first login on the provider's web page on your own computer, then log in to the CLI or desktop app. In Claude, check the account shown at the bottom of the screen: it must be the course address you were invited with. A code or link from the e-mail stays valid for about 10 minutes.
+- Use the address you were invited with for each provider. When the trainer gives you a course alias for Claude, do not use it to log in to ChatGPT.
+- Sprawdź logowanie CLI i aplikacji desktopowej osobno; nie zakładaj, że logowanie jednego klienta automatycznie wystarczy drugiemu.
+
+### A course account next to your company account
+
+Na VM zachowaj katalogi `CLAUDE_CONFIG_DIR` i `CODEX_HOME` skonfigurowane pod `D:\AI\labuser` oraz repozytorium `D:\jsystems-claude-codex-gis-2026-11`. Nie przenoś istniejącego logowania do nowego katalogu.
+
+Na własnym komputerze oddziel konto firmowe i kursowe przez osobne katalogi konfiguracji: [drugi CODEX_HOME](codex/separate-course-account/README.md) dla Codex oraz [CLAUDE_CONFIG_DIR](https://code.claude.com/docs/en/authentication) dla Claude Code. Pierwsze uruchomienie z nowym katalogiem wymaga logowania. Nie używaj konta kursowego do kodu ani danych firmowych.
 
 ## Claude Code statusline and cache hit rate
 
@@ -60,59 +69,59 @@ GitHub/Bitbucket branch protection is the real guard for protected branches and 
 
 ## GitHub repository deletion
 
-The root Claude settings and the Claude examples deny direct `gh repo delete`
-calls and commands mentioning `delete_repo`. The root Codex policy and its
-example deny `gh repo delete` (including `gh.exe`) and request approval for
-`gh auth login` and `gh auth refresh`. A Codex approval prompt is not a ban on
-granting a scope. The inactive parity example uses the same deletion rules.
+The root Claude settings and the Claude examples deny direct `gh repo delete` calls and commands mentioning `delete_repo`. The root Codex policy and its example deny `gh repo delete` (including `gh.exe`) and request approval for `gh auth login` and `gh auth refresh`. A Codex approval prompt is not a ban on granting a scope. The inactive parity example uses the same deletion rules.
 
-These patterns cover direct CLI calls, not every API call, wrapper or credential.
-Do not grant repository-deletion privileges to course agents. Inspect token
-permissions and repository roles separately; classic OAuth `delete_repo` is not
-the only possible way to authorize deletion. See the [GitHub CLI deletion
-reference](https://cli.github.com/manual/gh_repo_delete) and [Claude permission
-precedence](https://code.claude.com/docs/en/permissions).
+These patterns cover direct CLI calls, not every API call, wrapper or credential. Do not grant repository-deletion privileges to course agents. Inspect token permissions and repository roles separately; classic OAuth `delete_repo` is not the only possible way to authorize deletion. See the [GitHub CLI deletion reference](https://cli.github.com/manual/gh_repo_delete) and [Claude permission precedence](https://code.claude.com/docs/en/permissions).
 
-## Copilot CLI editor
+## Ctrl+G: długi prompt w edytorze
 
-Set `COPILOT_EDITOR` alongside `EDITOR` and `VISUAL`, so the CLI and other tools
-use the same editor. With VS Code installed and its `code` command in `PATH`,
-`--wait` keeps the calling process waiting until the file is closed.
+W Claude Code i Codex CLI naciśnij Ctrl+G podczas pisania promptu, aby otworzyć jego bieżącą treść w zewnętrznym edytorze. Oba narzędzia wybierają `VISUAL`, a gdy jej nie ustawiono, `EDITOR`. Na kursowych VM jest zainstalowany `micro`: zapisz Ctrl+S, zamknij Ctrl+Q. Po zamknięciu edytora tekst wraca do agenta; przejrzyj go przed wysłaniem.
 
-Bash, for the current shell:
-
-```bash
-export EDITOR='code --wait'
-export VISUAL="$EDITOR"
-export COPILOT_EDITOR="$EDITOR"
-```
-
-PowerShell, for the current shell:
+Windows PowerShell, trwale dla użytkownika:
 
 ```powershell
-$env:EDITOR = 'code --wait'
-$env:VISUAL = $env:EDITOR
-$env:COPILOT_EDITOR = $env:EDITOR
+[Environment]::SetEnvironmentVariable('VISUAL', 'micro', 'User')
 ```
 
-Check `copilot --version` and `copilot help environment` before teaching the
-example. CLI 1.0.89 lists precedence as `COPILOT_EDITOR`, `VISUAL`, `EDITOR`,
-while the online reference checked on 2026-10-26 lists a different order.
-Setting all three identically avoids relying on that discrepancy. Verify the
-real edit-and-return flow on the course VM; shell assignments do not prove
-editor integration. PowerShell and VS Code were not available in the audit
-environment, so that flow remains unverified there.
+```powershell
+[Environment]::SetEnvironmentVariable('EDITOR', 'micro', 'User')
+```
 
-Sources: [Copilot environment variables](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables),
-[VS Code command line](https://code.visualstudio.com/docs/configure/command-line).
+Otwórz nowe okno terminala i uruchom agenta ponownie. Aby użyć ustawień także w bieżącym oknie:
+
+```powershell
+$env:VISUAL = 'micro'
+```
+
+```powershell
+$env:EDITOR = 'micro'
+```
+
+Linux/macOS: dopisz poniższe eksporty do `~/.bashrc` dla Bash lub `~/.zshrc` dla Zsh, a potem otwórz nowe okno terminala. Poza VM najpierw sprawdź, czy `micro` jest zainstalowany.
+
+```bash
+export VISUAL='micro'
+```
+
+```bash
+export EDITOR='micro'
+```
+
+W przykładach profilu PowerShell i [.bashrc-agents](.bashrc-agents) `micro` jest wybierany tylko wtedy, gdy polecenie istnieje. Możesz użyć innego edytora, np. `zed --wait`; edytor musi zaczekać na zamknięcie pliku. Dla porównawczego ćwiczenia Copilot CLI ustaw również `COPILOT_EDITOR` na tę samą wartość w profilu powłoki.
+
+Źródła, sprawdzone 11.11.2026: [Codex CLI: Prompt editor](https://learn.chatgpt.com/docs/cli-customization#prompt-editor), [Claude Code: Ctrl+G](https://code.claude.com/docs/en/interactive-mode#general-controls), [Claude Code: VISUAL i EDITOR, wyjaśnienie maintainera](https://github.com/anthropics/claude-code/issues/18990). Dokumentacja interaktywna Claude potwierdza skrót; kolejność zmiennych potwierdza wyjaśnienie maintainera. Nie przeprowadzono tu interaktywnego testu Ctrl+G na Windows.
 
 ## Codex permissions
 
+Start with the [user-wide Windows baseline](codex/README.md#user-wide-windows-baseline). The reusable config examples default to :workspace and include optional course-tools definitions; the current project selects the strict course-root profile. course-tools is an optional profile to install deliberately. Install definitions and reviewed rules at user scope if selecting that profile across repositories.
+
 See [Claude-to-Codex permission mapping](codex/PERMISSIONS.md) for annotated TOML filesystem profiles, command `allow` / `prompt` / `forbidden` rules, and their limits. `codex/config.toml` includes these permissions directly in the main Codex example; `codex/permissions.toml` provides the same profiles as a minimal standalone example. Copy the configuration together with the reviewed `codex/rules/` files. `codex/examples/claude-command-parity.rules` is an inactive syntax comparison with broad allowances; use `codex/rules/course.rules` for the curated course policy.
 
-The active project `.codex/config.toml` deliberately leaves `features.network_proxy` unset. Enable it in `~/.codex/config.toml` using the [user-level example](codex/config.toml), so project and background daemon threads agree. Domain rules require that user-level activation; without it, do not assume the configured domain list is enforced. See the [activation prerequisite](codex/PERMISSIONS.md#project-and-user-proxy-activation) and [Windows sandbox troubleshooting](../Research/codex-windows-sandbox-troubleshooting-2026-10-15.md).
+Both user examples explicitly disable `features.network_proxy` for the tested Windows baseline. Inspect the actual project configuration separately. Do not enable it during the quickstart. Domain tables, including the optional two-host profile, require a separately activated and validated proxy to constrain destinations. See the [optional proxy setup](codex/PERMISSIONS.md#project-and-user-proxy-activation) and [Windows sandbox troubleshooting](../Research/codex-windows-sandbox-troubleshooting-2026-10-15.md).
 
 ## Codex profiles
+
+For the measured optional Windows host-tool baseline, see course-tools and its tradeoffs: [participant steps in Polish](codex/WINDOWS-QUICKSTART-PL.md) and [evidence report](../Research/codex-windows-sandbox-compatibility-2026-11-05.md). The full reusable example enables Context7 without a required API key. The active project currently disables it: enable the reviewed Context7 entry in the project too, then verify /mcp. Playwright MCP stays off while the CLI is used for manual QA.
 
 Codex reads profile files only from `~/.codex/`. Copy them there, then choose one:
 

@@ -1,3 +1,5 @@
+> **Later course measurement (2026-11-05, Codex CLI 0.166.0):** this October report is historical and does not describe the newly measured course VM configuration. A fresh host PowerShell and actual Codex escalation trial passed with a temporary workspace profile without deny-read; the strict profile failed at sandbox setup. See the [dated compatibility report](codex-windows-sandbox-compatibility-2026-11-05.md) and [Polish participant steps](../agent-configs/codex/WINDOWS-QUICKSTART-PL.md). This evidence does not establish universal MXC instability.
+
 # Codex CLI on Windows: daemon updates, sandbox loops and ignored escalations
 
 *Field report, 15-16 October 2026. Codex CLI 0.162.1 (standalone installer) with the app-server daemon, Windows 11 25H2, using an account without local admin rights. The original field investigation used local session files (`~/.codex/sessions/**/rollout-*.jsonl`), the log database (`~/.codex/logs_2.sqlite`), the sandbox log (`~/.codex/.sandbox/sandbox.<date>.log`) and the openai/codex source and issue tracker.*
@@ -19,8 +21,11 @@ codex (TUI client) --unix socket--> codex app-server --managed-daemon --> per-co
 ## 2. Updating the daemon after a CLI update
 
 ```powershell
-codex app-server daemon update --from-cli --yes   # copy the CLI build into the daemon and pin it
-codex app-server daemon version                   # cliVersion and appServerVersion must match
+codex app-server daemon update --from-cli --yes
+```
+
+```powershell
+codex app-server daemon version
 ```
 
 **Problem seen:** `Error: timed out waiting for daemon installer lock ...\packages/app-server-daemon\install.lock`.
@@ -31,10 +36,25 @@ codex app-server daemon version                   # cliVersion and appServerVers
 
 ```powershell
 codex app-server daemon stop
+```
+
+```powershell
 Get-CimInstance Win32_Process -Filter "Name='codex.exe'" | Select-Object ProcessId, CommandLine
-Stop-Process -Id <pid of the 'pid-update-loop' process only>
+```
+
+```powershell
+Stop-Process -Id ([int](Read-Host 'PID of the confirmed pid-update-loop process only'))
+```
+
+```powershell
 codex app-server daemon update --from-cli --yes
+```
+
+```powershell
 codex app-server daemon start
+```
+
+```powershell
 codex app-server daemon version
 ```
 
@@ -97,17 +117,13 @@ After an authorized permission configuration change, start a new session and tra
 
 ## 7. FAQ
 
-**Is this caused by Entra ID or the Windows 365 VM?**
-Not for the main problems. The UAC loop comes from inconsistent `network_proxy` configuration, and the ignored escalation is Codex logic; neither depends on the account type. MXC was tested and works on the Cloud PC. Entra ID does show up elsewhere (user SIDs `S-1-12-1-...`; see issue #43354 about setup-marker ACLs on domain accounts), and a non-admin account makes every elevated setup a visible UAC prompt. Those make the symptoms more visible, but they are not the root cause.
+**Is this caused by Entra ID or the Windows 365 VM?** Not for the main problems. The UAC loop comes from inconsistent `network_proxy` configuration, and the ignored escalation is Codex logic; neither depends on the account type. MXC was tested and works on the Cloud PC. Entra ID does show up elsewhere (user SIDs `S-1-12-1-...`; see issue #43354 about setup-marker ACLs on domain accounts), and a non-admin account makes every elevated setup a visible UAC prompt. Those make the symptoms more visible, but they are not the root cause.
 
-**Why might another machine behave differently?**
-The reported combination was: Windows-native Codex with the daemon pinned to 0.162.1, a custom permission profile with deny-read rules, `network_proxy` enabled only at project level, auto-review approvals, and resumed sessions using subagents, the interactive desktop and `gh`. A default setup (no project-level proxy flag, no GUI QA, or Codex in WSL/macOS) avoids most of it.
+**Why might another machine behave differently?** The reported combination was: Windows-native Codex with the daemon pinned to 0.162.1, a custom permission profile with deny-read rules, `network_proxy` enabled only at project level, auto-review approvals, and resumed sessions using subagents, the interactive desktop and `gh`. A default setup (no project-level proxy flag, no GUI QA, or Codex in WSL/macOS) avoids most of it.
 
-**It worked before. What changed?**
-The CLI/daemon update from 0.160.0 to 0.162.1. It changed the sandbox setup marker, which forced re-provisioning, and in this setup escalation stopped reaching the reviewer.
+**It worked before. What changed?** The CLI/daemon update from 0.160.0 to 0.162.1. It changed the sandbox setup marker, which forced re-provisioning, and in this setup escalation stopped reaching the reviewer.
 
-**Will WSL work better?**
-For CLI work, most likely yes. The Linux sandbox is a different implementation (Landlock/bubblewrap): no sandbox Windows users, no UAC, no MXC, no Credential Manager. `gh` in WSL has its own login (`~/.config/gh`). The Codex desktop app can also run its agent in WSL. Limits:
+**Will WSL work better?** For CLI work, most likely yes. The Linux sandbox is a different implementation (Landlock/bubblewrap): no sandbox Windows users, no UAC, no MXC, no Credential Manager. `gh` in WSL has its own login (`~/.config/gh`). The Codex desktop app can also run its agent in WSL. Limits:
 - Whether the ignored-escalation bug also affects Linux was **not verified**.
 - QA of a **Windows** Swing desktop app has to happen on Windows. WSLg runs the Linux JVM, which is a different runtime and look-and-feel.
 

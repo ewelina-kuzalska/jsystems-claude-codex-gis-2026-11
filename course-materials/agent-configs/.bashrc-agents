@@ -19,17 +19,25 @@
 # ============================================================================
 
 # Set default editor for CLI tools
-export EDITOR=zed # or micro, nano, nvim, fresh, etc. (fast and lightweight TUI recommended)
+# Preserve the current editor if micro has not been installed yet.
+if command -v micro >/dev/null 2>&1; then
+    export EDITOR=micro
+    export VISUAL="$EDITOR" COPILOT_EDITOR="$EDITOR"
+fi
+# Alternative: uncomment all three lines for Zed.
+# export EDITOR='zed --wait'
+# export VISUAL="$EDITOR"
+# export COPILOT_EDITOR="$EDITOR"
 
 # ============================================================================
 # Claude Code: skipping permission prompts (updated 2026-06)
 # ============================================================================
-# --dangerously-skip-permissions is STILL valid — it is exactly equivalent to
+# --dangerously-skip-permissions is STILL valid - it is exactly equivalent to
 # --permission-mode bypassPermissions: it disables ALL prompts AND safety checks
 # and runs every tool call immediately. Use it ONLY inside an isolated container/
 # VM/devcontainer. On Linux/macOS it refuses to start as root/sudo unless it
 # detects a recognized sandbox. It is NO LONGER the recommended way to reduce
-# prompts for normal work — see the safer modes below.
+# prompts for normal work - see the safer modes below.
 # Docs: https://code.claude.com/docs/en/permission-modes
 alias clauded="claude --dangerously-skip-permissions"
 

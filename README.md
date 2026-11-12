@@ -1,3 +1,50 @@
+# UPDATES !!!
+
+## Przed blokiem 2 (12-13.11)
+
+- [Codex czy Claude Code: stan na listopad 2026 i moja rekomendacja](course-materials/Research/codex-vs-claude-2026-11.md), w tym sandbox, zgody i pytania interaktywne.
+- [Ctrl+G: długi prompt w edytorze](course-materials/agent-configs/README.md#ctrlg-długi-prompt-w-edytorze), przyda się przy promptach planu.
+- [Sandbox Codex na Windows: profile uprawnień, gh i Playwright](course-materials/agent-configs/codex/WINDOWS-QUICKSTART-PL.md).
+- [Review PR z forka](course-materials/Research/github-fork-pr-review-workshop-2026-11-05.md).
+
+## Po pierwszych dwóch dniach (2-3.11)
+
+**Projekt z zajęć:**
+
+- Praca nad aplikacją (PRD, ADR, plan) jest w [PR #6](https://github.com/LucasMatuszewski/jsystems-claude-codex-gis-2026-11/pull/6), gałąź `worktree-prototype-a`.
+- Gałąź `main` zostaje bazą startową kursu z materiałami i aktualizacjami.
+
+**Podsumowania i historia czatu** (wszystkie linki, komendy i konfiguracje z zajęć):
+
+- Dzień 1: [podsumowanie](course-materials/zoom-summary-chat-history/day-1-summary.md), [historia czatu](course-materials/zoom-summary-chat-history/day-1-chat-history.md)
+- Dzień 2: [podsumowanie](course-materials/zoom-summary-chat-history/day-2-summary.md), [historia czatu](course-materials/zoom-summary-chat-history/day-2-chat-history.md)
+
+**Konta szkoleniowe działają do 29 listopada.** Korzystajcie z nich jak najwięcej.
+
+- OpenAI (ChatGPT, Codex): logowanie prywatnym adresem e-mail.
+- Anthropic (Claude Code): logowanie adresem w domenie devpowers.com, który ode mnie dostaliście.
+
+**Zadanie na dwa tygodnie przerwy:**
+
+- Dokończcie po swojemu ćwiczenie z planem (PRD, ADR, plan, realizacja) albo zbudujcie własną aplikację.
+- Użyjcie jak najwięcej z tego, co przerobiliśmy: skills, MCP i Context7, uprawnienia, Git Worktree, GitHub CLI.
+- 12 listopada wrócimy do tego razem i dokończymy wspólnie. Pójdzie szybciej, bo prawie wszystko dla agentów jest już zainstalowane.
+
+**`/goal` w Codex** (więcej 12 listopada):
+
+- Ustawia cel, do którego agent dąży przez wiele kolejnych tur, aż uzna go za osiągnięty, np. `/goal zrealizuj plan z pliku @plik-z-planem.md`.
+- Cel można wstrzymać i wznowić (`/goal pause`, `/goal resume`) albo usunąć (`/goal clear`).
+- Długie cele zużywają dużo tokenów.
+
+**Spec-Driven Development:**
+
+- PRD, ADR i plan, nad którymi pracowaliśmy, to moja wersja SDD. Najlepiej dopasować ją do swojego projektu i zespołu.
+- Najważniejsze: dać agentom kompletne środowisko informacji i dobrze skonfigurowany harness, tak aby mogli samodzielnie przejść cały proces.
+- Inne podejścia: [GitHub Spec Kit](https://github.com/github/spec-kit), [specs.md](https://specs.md/) z przepływem [FIRE](https://specs.md/fire-flow/overview.md).
+- Skills: [write-prd](https://github.com/EdukeyTeam/agent-toolbox/tree/main/skills/write-prd), [write-adr](https://github.com/EdukeyTeam/agent-toolbox/tree/main/skills/write-adr), [skill planowania](https://github.com/EdukeyTeam/agent-toolbox/pull/28) (otwarty PR).
+
+---
+
 # AI dla programistów: agenci AI w pracy z danymi GIS (Claude Code i Codex) (JSystems)
 
 Wybierz materiał do zadania:

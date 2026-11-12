@@ -20,7 +20,12 @@ personality = "pragmatic"        # Style/tone preset (e.g., pragmatic/friendly/n
 # Permission examples mapped from Claude: file profiles below plus rules/course.rules.
 # Avoid mixing legacy sandbox_mode selectors with named profiles; higher-precedence selectors win.
 # See PERMISSIONS.md for allow, approval, deny and platform-specific limitations.
-default_permissions = "course-workspace"
+# User default: normal sandbox in every project.
+# Opt in to the defined course profile globally by changing this to "course-tools".
+# A trusted project's .codex/config.toml can select course-tools only for that project.
+# sandbox_mode = "danger-full-access" # Demonstration only: disables local sandbox restrictions.
+# Do not keep any active sandbox_mode when using named permission profiles.
+default_permissions = ":workspace"
 web_search = "cached" # Hosted web search is separate from command network permissions.
 oss_provider = "ollama"          # Default OSS (Open Source) models provider
 
@@ -69,7 +74,9 @@ sandbox = "elevated"
 # Feature toggles
 # ----------------
 [features]
-network_proxy = true            # Enforce domain rules for the selected network-enabled profile.
+# Tested course baseline; MXC requires a separate acceptance run.
+prefer_mxc = false
+network_proxy = false
 multi_agent = true               # Allow spawning/using multiple agents (if supported by your build).
 
 # ----------------
@@ -94,10 +101,11 @@ enabled = false
 # Context7 (docs context provider) - connect to remote server
 [mcp_servers.context7]
 url = "https://mcp.context7.com/mcp"
-env_http_headers = { "CONTEXT7_API_KEY" = "CONTEXT7_API_KEY" } # Optional environment-variable header; never paste a key.
+# Optional authenticated access: configure this environment variable first.
+# env_http_headers = { "CONTEXT7_API_KEY" = "CONTEXT7_API_KEY" }
 startup_timeout_sec = 20
 tool_timeout_sec = 60
-enabled = false # Optional integration; the course starts with local CLI tools.
+enabled = true # Primary library documentation source for the course.
 # Local MCP server with Context7 on your machine
 # [mcp_servers.context7]
 # command = "npx"
@@ -260,8 +268,19 @@ wire_api = "responses"
 # Higher-precedence sandbox_mode/--sandbox can select legacy behavior; inspect the effective profile.
 # See course-materials/agent-configs/codex/PERMISSIONS.md for scope and platform limits.
 
+# Opt-in course-tools profile: no OS deny-read for .env/secrets; use only with synthetic course data.
+[permissions.course-tools]
+description = "Default course editing: workspace/temp writes, network enabled, no secret-file deny-read; rules allow selected host commands outside the sandbox."
+extends = ":workspace"
+
+[permissions.course-tools.network]
+enabled = true
+
+[permissions.course-tools.network.domains]
+"*" = "allow"
+
 [permissions.course-workspace]
-description = "Workspace editing; named environment files and secrets are unreadable."
+description = "Strict editing: workspace/temp writes and network enabled; named .env files and secrets paths are denied."
 extends = ":workspace"
 
 [permissions.course-workspace.filesystem]
@@ -295,13 +314,13 @@ enabled = true
 "*" = "allow"
 
 [permissions.course-root]
-description = "Course repository editing; logs and training examples remain accessible."
+description = "Compatibility alias for course-workspace; identical strict filesystem and network permissions."
 extends = "course-workspace"
-# This named root preset inherits the default network and filesystem policy.
+# This named root preset inherits course-workspace network and filesystem policy.
 # Logs are available to sandboxed search commands; there is no directory deny.
 
 [permissions.course-review]
-description = "Review workspace files; edits inside the workspace require extra permission."
+description = "Strict review: workspace read-only, secret-file denials retained, temporary directories writable."
 extends = "course-workspace"
 
 [permissions.course-review.filesystem.":workspace_roots"]
@@ -309,14 +328,14 @@ extends = "course-workspace"
 # Temporary directories inherited from :workspace remain writable.
 
 [permissions.course-docs]
-description = "Read the workspace and edit only docs/ (plus inherited temporary directories)."
+description = "Strict documentation editing: workspace read-only except docs/; secret-file denials retained; temp writable."
 extends = "course-review"
 
 [permissions.course-docs.filesystem.":workspace_roots"]
 "docs" = "write"
 
 [permissions.course-jetbrains]
-description = "Optional example: restrict command network access to two JetBrains hosts."
+description = "Optional example: workspace editing with secret-file denials; two-host domain policy requires an active network proxy."
 # Independent baseline avoids inheriting course-workspace's global host allowance.
 extends = ":workspace"
 
@@ -348,4 +367,4 @@ enabled = true
 [permissions.course-jetbrains.network.domains]
 "blog.jetbrains.com" = "allow"
 "www.jetbrains.com" = "allow"
-# Domain rules require [features] network_proxy = true, provided in the sample config.
+# Domain rules require an active network proxy; these user examples do not enable it.

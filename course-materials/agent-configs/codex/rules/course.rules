@@ -8,6 +8,15 @@
 prefix_rule(pattern=["pwd"], decision="allow", justification="Print the current directory.", match=["pwd"], not_match=["cat README.md"])
 prefix_rule(pattern=["whoami",], decision="allow", justification="Print the current account.", match=["whoami"], not_match=["printenv"])
 
+# Host pilot validated gh repo view and the Playwright lifecycle; remaining gh
+# read subcommands are policy-checked examples, not separate Windows live results. Do not add
+# gh api, PR mutations, arbitrary browser code, uploads or shell wrappers.
+prefix_rule(pattern=[["gh", "gh.exe"], "repo", "view"], decision="allow", justification="Read repository metadata using the signed-in gh client.", match=["gh repo view owner/repo"], not_match=["gh repo delete owner/repo"])
+prefix_rule(pattern=[["gh", "gh.exe"], "pr", ["view", "list", "status", "checks"]], decision="allow", justification="Read pull request state using the signed-in gh client.", match=["gh pr view 1", "gh pr list", "gh pr status", "gh pr checks 1"], not_match=["gh pr edit 1"])
+prefix_rule(pattern=[["gh", "gh.exe"], "issue", ["view", "list"]], decision="allow", justification="Read issue state using the signed-in gh client.", match=["gh issue view 1", "gh issue list"], not_match=["gh issue create"])
+prefix_rule(pattern=[["playwright-cli", "playwright-cli.cmd", "playwright-cli.exe"], "open"], decision="allow", justification="Open a browser session for manual UI validation.", match=["playwright-cli open https://localhost"], not_match=["playwright-cli run-code arbitrary-code"])
+prefix_rule(pattern=[["playwright-cli", "playwright-cli.cmd", "playwright-cli.exe"], ["snapshot", "close"]], decision="allow", justification="Capture the default Playwright CLI page snapshot or close its session.", match=["playwright-cli snapshot -s=course-demo", "playwright-cli close -s=course-demo"], not_match=["playwright-cli run-code arbitrary-code"])
+
 # Ordinary reads, searches, Git, builds, tests, Docker inspection and shell wrappers
 # have no explicit prompt rules. The sandbox controls access; on-request reviews
 # escalation. Broad prompt prefixes would send even sandboxed work to auto_review.
@@ -47,5 +56,5 @@ prefix_rule(pattern=["docker-compose", "down"], decision="forbidden", justificat
 prefix_rule(pattern=[["docker", "docker.exe"], "compose", "down"], decision="forbidden", justification="Modern spelling of the same blocked stack teardown.", match=["docker compose down"], not_match=["docker compose ps"])
 
 # Blanket staging is blocked; package managers follow the course project's own choice.
-prefix_rule(pattern=[["git", "git.exe"], "add", ["-A", "--all", "."]], decision="forbidden", justification="Stage explicitly named paths after reviewing git status.", match=["git add -A", "git add ."], not_match=["git add src/Main.java"])
+prefix_rule(pattern=[["git", "git.exe"], "add", ["-A", "--all", "."]], decision="forbidden", justification="Stage explicitly named paths after reviewing git status.", match=["git add -A", "git add ."], not_match=["git add app/main.py"])
 prefix_rule(pattern=["npm", "install", ["-g", "--global"]], decision="forbidden", justification="Use pnpm for global CLI installations.", match=["npm install -g example"], not_match=["npm install"])

@@ -1,24 +1,45 @@
 # Self-contained permission example; merge selected settings deliberately.
-# Copy as ~/.codex/config.toml or a trusted project's .codex/config.toml.
-# Remove sandbox_mode and [sandbox_workspace_write] from ALL active config layers.
+# Merge into $CODEX_HOME/config.toml (or ~/.codex/config.toml when CODEX_HOME is unset).
+# Comment active sandbox_mode selectors and remove active [sandbox_workspace_write] tables from loaded layers.
 # This file is a permissions example, separate from model/provider --profile presets.
-default_permissions = "course-workspace"
+# User default: normal sandbox in every project.
+# Opt in to the defined course profile globally by changing this to "course-tools".
+# A trusted project's .codex/config.toml can select course-tools only for that project.
+# sandbox_mode = "danger-full-access" # Demonstration only: disables local sandbox restrictions.
+# Do not keep any active sandbox_mode when using named permission profiles.
+default_permissions = ":workspace"
 approval_policy = "on-request"
 # Default tool-output history budget; tools can override it and raw rollouts retain output.
 tool_output_token_limit = 4000
 approvals_reviewer = "auto_review" # Route eligible approval requests to the reviewer agent.
 web_search = "cached" # Separate hosted capability, as in Claude's WebSearch allow.
 
+[windows]
+sandbox = "elevated"
+
 [features]
-# Enforce domain rules; the default profile permits public hosts.
-network_proxy = true
+# Tested course baseline; MXC requires a separate acceptance run.
+prefer_mxc = false
+network_proxy = false
+# Domain restrictions require separate proxy activation and validation.
 
 # Beta permission profiles; use instead of sandbox_mode / sandbox_workspace_write.
 # Higher-precedence sandbox_mode/--sandbox can select legacy behavior; inspect the effective profile.
 # See course-materials/agent-configs/codex/PERMISSIONS.md for scope and platform limits.
 
+# Opt-in course-tools profile: no OS deny-read for .env/secrets; use only with synthetic course data.
+[permissions.course-tools]
+description = "Default course editing: workspace/temp writes, network enabled, no secret-file deny-read; rules allow selected host commands outside the sandbox."
+extends = ":workspace"
+
+[permissions.course-tools.network]
+enabled = true
+
+[permissions.course-tools.network.domains]
+"*" = "allow"
+
 [permissions.course-workspace]
-description = "Workspace editing; named environment files and secrets are unreadable."
+description = "Strict editing: workspace/temp writes and network enabled; named .env files and secrets paths are denied."
 extends = ":workspace"
 
 [permissions.course-workspace.filesystem]
@@ -52,13 +73,13 @@ enabled = true
 "*" = "allow"
 
 [permissions.course-root]
-description = "Course repository editing; logs and training examples remain accessible."
+description = "Compatibility alias for course-workspace; identical strict filesystem and network permissions."
 extends = "course-workspace"
-# This named root preset inherits the default network and filesystem policy.
+# This named root preset inherits course-workspace network and filesystem policy.
 # Logs are available to sandboxed search commands; there is no directory deny.
 
 [permissions.course-review]
-description = "Review workspace files; edits inside the workspace require extra permission."
+description = "Strict review: workspace read-only, secret-file denials retained, temporary directories writable."
 extends = "course-workspace"
 
 [permissions.course-review.filesystem.":workspace_roots"]
@@ -66,14 +87,14 @@ extends = "course-workspace"
 # Temporary directories inherited from :workspace remain writable.
 
 [permissions.course-docs]
-description = "Read the workspace and edit only docs/ (plus inherited temporary directories)."
+description = "Strict documentation editing: workspace read-only except docs/; secret-file denials retained; temp writable."
 extends = "course-review"
 
 [permissions.course-docs.filesystem.":workspace_roots"]
 "docs" = "write"
 
 [permissions.course-jetbrains]
-description = "Optional example: restrict command network access to two JetBrains hosts."
+description = "Optional example: workspace editing with secret-file denials; two-host domain policy requires an active network proxy."
 # Independent baseline avoids inheriting course-workspace's global host allowance.
 extends = ":workspace"
 
@@ -105,4 +126,4 @@ enabled = true
 [permissions.course-jetbrains.network.domains]
 "blog.jetbrains.com" = "allow"
 "www.jetbrains.com" = "allow"
-# Domain rules require [features] network_proxy = true, provided in the sample config.
+# Domain rules require an active network proxy; these user examples do not enable it.

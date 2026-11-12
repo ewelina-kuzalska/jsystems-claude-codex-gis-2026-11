@@ -14,6 +14,17 @@
 # Keys belong in provider environment variables, never in this file.
 # Confirm the model/provider at startup. @args forwards extra arguments.
 
+# Default editor for CLI tools; preserve the current editor if micro is absent.
+if (Get-Command micro -ErrorAction SilentlyContinue) {
+    $env:EDITOR = "micro"
+    $env:VISUAL = $env:EDITOR
+    $env:COPILOT_EDITOR = $env:EDITOR
+}
+# Alternative: uncomment all three lines for Zed.
+# $env:EDITOR = "zed --wait"
+# $env:VISUAL = $env:EDITOR
+# $env:COPILOT_EDITOR = $env:EDITOR
+
 # Provider routes, including Ollama cloud, may send prompts off-machine.
 function Invoke-CodexZai         { codex --profile zai @args }
 function Invoke-CodexOpenRouter  { codex --profile openrouter @args }

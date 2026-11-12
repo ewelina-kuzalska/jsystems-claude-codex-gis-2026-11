@@ -1,3 +1,5 @@
+> **Course VM check, 2026-11-05:** WezTerm was not found on PATH or standard installation paths; no WezTerm run, Lua config validation, or head-to-head stability test was performed. Treat comparative usability claims below as hypotheses, not course measurements. WezTerm is a terminal emulator and does not select or repair Codex's sandbox, credential access, network, browser IPC, or process lifecycle. The course uses PowerShell and the terminal already installed on the VM. See the [measured Windows sandbox report](codex-windows-sandbox-compatibility-2026-11-05.md) and [Polish participant steps](../agent-configs/codex/WINDOWS-QUICKSTART-PL.md).
+
 # Windows Terminal emulators recommended for agentic AI tools
 
 > What are best terminals for Cloud Code, Gemini CLI, Cursor CLI or Codex CLI. I use Ghostty on Linux (also on MacOS), and iTerm on MacOS. Something similar for Windows?
@@ -6,31 +8,31 @@
 
 ## Quick Context: Ghostty on Windows
 
-Ghostty is **not available on Windows**  — it only supports Linux and macOS. So you'll need a genuine alternative. The closest in spirit (fast, Rust-based, GPU-accelerated, developer-focused) are WezTerm and Warp.[^1]
+Ghostty is **not available on Windows**  - it only supports Linux and macOS. So you'll need a genuine alternative. The closest in spirit (fast, Rust-based, GPU-accelerated, developer-focused) are WezTerm and Warp.[^1]
 
 ***
 
 ## Top Picks
 
-### WezTerm — Closest to Ghostty's Spirit
+### WezTerm - Closest to Ghostty's Spirit
 
-WezTerm is a GPU-accelerated, cross-platform terminal and multiplexer written in Rust. It uses DirectX 12 on Windows for rendering, supports tabs, split panes, Lua-based configuration, true color, ligatures, and has excellent WSL2 integration — including bypassing ConPTY via Unix domain sockets for higher fidelity. It's the most feature-complete option across all platforms and is specifically recommended for cross-platform consistency.[^2][^3][^4][^5][^6]
+WezTerm is a GPU-accelerated, cross-platform terminal and multiplexer written in Rust. It uses DirectX 12 on Windows for rendering, supports tabs, split panes, Lua-based configuration, true color, ligatures, and has excellent WSL2 integration - including bypassing ConPTY via Unix domain sockets for higher fidelity. It's the most feature-complete option across all platforms and is specifically recommended for cross-platform consistency.[^2][^3][^4][^5][^6]
 
 **Best for:** Power users who want a Ghostty-like, highly configurable terminal with multiplexing, running Claude Code, Gemini CLI, or Codex CLI in WSL2.
 
-### Warp — Best for Agentic AI Workflows
+### Warp - Best for Agentic AI Workflows
 
-Warp launched on Windows in February 2025 with full support for PowerShell, WSL, and Git Bash. It's written entirely in Rust with GPU rendering, and has **Agent Mode built in** — it can auto-execute commands, debug errors, summarize logs, and uses codebase context to suggest the right commands. By default it uses Claude 3.5 Sonnet internally, with GPT-4o as an alternative.[^7][^8]
+Warp launched on Windows in February 2025 with full support for PowerShell, WSL, and Git Bash. It's written entirely in Rust with GPU rendering, and has **Agent Mode built in** - it can auto-execute commands, debug errors, summarize logs, and uses codebase context to suggest the right commands. By default it uses Claude 3.5 Sonnet internally, with GPT-4o as an alternative.[^7][^8]
 
-**Best for:** If you want a terminal that *itself* acts as an agentic layer on top of tools like Claude Code or Gemini CLI — essentially double-stacking AI assistance. Worth noting it requires a login for AI features.
+**Best for:** If you want a terminal that *itself* acts as an agentic layer on top of tools like Claude Code or Gemini CLI - essentially double-stacking AI assistance. Worth noting it requires a login for AI features.
 
-### Windows Terminal — Solid Baseline
+### Windows Terminal - Solid Baseline
 
 Microsoft's own Windows Terminal is free, open-source, supports tabs, rich text, split panes, Unicode, and installs directly from the Microsoft Store. It doesn't match WezTerm's configurability or Warp's AI features, but it's the most seamlessly integrated with Windows and works perfectly as a host for any CLI tool.[^9][^10]
 
 **Best for:** A reliable, zero-friction option if you just want to run agentic CLIs without extra overhead.
 
-### Alacritty — Minimal and Blazing Fast
+### Alacritty - Minimal and Blazing Fast
 
 Alacritty is GPU-accelerated, cross-platform, and focused purely on speed and simplicity. It has no built-in multiplexing (you'd pair it with tmux), and its configuration is YAML/TOML-based. On Windows, some users find WezTerm smoother for Neovim/editors, but for pure CLI throughput it's competitive.[^11][^12]
 
@@ -53,7 +55,7 @@ Alacritty is GPU-accelerated, cross-platform, and focused purely on speed and si
 
 ## Recommendation for Your Setup
 
-Given your background — running agentic tools like Claude Code inside Cursor with WSL, deep CLI usage — **WezTerm is the closest Ghostty equivalent** on Windows: Rust-based, GPU-accelerated, highly configurable, and excellent WSL2 integration. If you want the terminal itself to be AI-aware and agentic (not just a host), **Warp** is a compelling addition since it's now stable on Windows and deeply integrates with the same Claude models you're likely using already.[^3][^4][^8][^7]
+Given your background - running agentic tools like Claude Code inside Cursor with WSL, deep CLI usage - **WezTerm is the closest Ghostty equivalent** on Windows: Rust-based, GPU-accelerated, highly configurable, and excellent WSL2 integration. If you want the terminal itself to be AI-aware and agentic (not just a host), **Warp** is a compelling addition since it's now stable on Windows and deeply integrates with the same Claude models you're likely using already.[^3][^4][^8][^7]
 <span style="display:none">[^13][^14][^15][^16][^17][^18][^19][^20][^21][^22][^23][^24][^25][^26][^27][^28][^29][^30]</span>
 
 <div align="center">⁂</div>

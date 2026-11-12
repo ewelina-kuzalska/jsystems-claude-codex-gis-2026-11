@@ -1,11 +1,12 @@
+> Aktualizacja 5.11.2026: poniższa historyczna teza, że Codex nie jest w ACP Registry, jest nieaktualna. JetBrains udostępnia Codex przez AI Chat -> wybór agenta -> Install From ACP Registry (IDE 2026.1+ i zgodny plugin). Użyj [oficjalnej instrukcji ACP](https://www.jetbrains.com/help/ai-assistant/acp.html) i [bazy JetBrains](https://youtrack.jetbrains.com/projects/PY/articles/SUPPORT-A-3700/Using-Claude-Codex-and-Cursor-agents-in-JetBrains-IDEs). Nie uruchamiaj `codex acp`: CLI nie ma takiej komendy. Obecny adapter to [agentclientprotocol/codex-acp](https://github.com/agentclientprotocol/codex-acp); stary projekt zed-industries jest archiwalny. ACP nie gwarantuje zgodności funkcji z CLI, a obecna instrukcja JetBrains wyklucza WSL w tej integracji. Dalszą część traktuj jako materiał historyczny.
+
 <img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px"/>
 
 # research and compare Codex CLI with OpenCode. features, capabilities, pros and cons. Can we use multi-agent workflows with sub-agents in both of them? do they have long running tasks and memory as claude code CLI has? can we use any model with good function calling hosted on custom openai compatible endpoint with both of them? (e.g. OpenRouter).
 
 do both have sandboxing and how does it work on windows and on Linux Ubuntu?
 
-both are open source?
-Codex CLI has rust-based core, yes? while OpenCode is TypeScript? isn't codex faster because of this?
+both are open source? Codex CLI has rust-based core, yes? while OpenCode is TypeScript? isn't codex faster because of this?
 
 Now I have enough information for a comprehensive comparison. Let me put it together.
 
@@ -19,12 +20,12 @@ Both are fully open source [^1_1][^1_2]. Codex CLI lives at `github.com/openai/c
 
 ## Architecture: Rust Core vs TypeScript
 
-You're correct on both counts. Codex CLI has a **Rust core** (`codex-rs`) that handles the protocol layer, sandboxing, safety enforcement, and agent state management [^1_4][^1_5]. The CLI itself ships via `npm install -g @openai/codex`, but the heavy lifting — execution isolation, Landlock integration, metadata schemas — is compiled Rust running natively [^1_6]. OpenCode is **TypeScript/Node.js**, built with the Vercel AI SDK and a TUI framework [^1_7][^1_8].
+You're correct on both counts. Codex CLI has a **Rust core** (`codex-rs`) that handles the protocol layer, sandboxing, safety enforcement, and agent state management [^1_4][^1_5]. The CLI itself ships via `npm install -g @openai/codex`, but the heavy lifting - execution isolation, Landlock integration, metadata schemas - is compiled Rust running natively [^1_6]. OpenCode is **TypeScript/Node.js**, built with the Vercel AI SDK and a TUI framework [^1_7][^1_8].
 
 Does this make Codex faster in practice? **Somewhat, but for a different reason than you'd expect.** The bottleneck in both tools is LLM API round-trips, not CLI processing. Where Rust gives Codex a measurable edge is:
 
 - **Sandboxing overhead is near-zero** (Landlock calls at the kernel level vs. process wrapping)
-- **Richer streaming/rendering** — recent updates added Rust-level metadata on text elements for smoother schema evolution [^1_6]
+- **Richer streaming/rendering** - recent updates added Rust-level metadata on text elements for smoother schema evolution [^1_6]
 - **Codex-Spark on Cerebras WSE-3** runs at 1,000+ tokens/sec specifically because the OpenAI infra + Rust protocol are co-designed [^1_3]
 
 OpenCode's TypeScript runtime adds a small, usually imperceptible overhead for non-LLM operations.
@@ -39,11 +40,11 @@ OpenCode's TypeScript runtime adds a small, usually imperceptible overhead for n
 | Agent inspection | `/agent` to switch/inspect live threads | Manual terminal splits or community tool |
 | Configuration | `.codex/agents/` + `config.toml` per-agent | `opencode.json` with per-agent model + prompt |
 
-Codex CLI's multi-agent system is notably more **structured and production-grade** [^1_9][^1_10] — you can define specialized agents (reviewer, planner, coder), spawn them with `spawn_agents_on_csv` for batch work (e.g., review 50 components in parallel), and poll results with the `wait` tool for up to 1 hour per call [^1_9]. The main agent automatically orchestrates, waits, and consolidates [^1_10]. OpenCode's parallel agents are more of a **power-user workflow** — you run multiple sessions or use community tools like `opencode-parallel-agents` [^1_11][^1_12].
+Codex CLI's multi-agent system is notably more **structured and production-grade** [^1_9][^1_10] - you can define specialized agents (reviewer, planner, coder), spawn them with `spawn_agents_on_csv` for batch work (e.g., review 50 components in parallel), and poll results with the `wait` tool for up to 1 hour per call [^1_9]. The main agent automatically orchestrates, waits, and consolidates [^1_10]. OpenCode's parallel agents are more of a **power-user workflow** - you run multiple sessions or use community tools like `opencode-parallel-agents` [^1_11][^1_12].
 
 ## Long-Running Tasks
 
-Codex CLI is explicitly designed for **long-horizon tasks** — OpenAI published a case study of a Codex-tuned model running uninterrupted for ~25 hours on a complex spec, with autonomous milestone verification and lint/test repair loops [^1_13]. (Check current Codex docs for the exact model name.) The `wait` tool's long-polling (up to 1 hour per call) enables this natively [^1_9]. SQLite-backed agent job state means crashes don't lose progress [^1_9].
+Codex CLI is explicitly designed for **long-horizon tasks** - OpenAI published a case study of a Codex-tuned model running uninterrupted for ~25 hours on a complex spec, with autonomous milestone verification and lint/test repair loops [^1_13]. (Check current Codex docs for the exact model name.) The `wait` tool's long-polling (up to 1 hour per call) enables this natively [^1_9]. SQLite-backed agent job state means crashes don't lose progress [^1_9].
 
 OpenCode has **SQLite-based session persistence** [^1_7] so conversation history survives restarts, but it doesn't have a native "run for 25 hours autonomously" construct. Long tasks work but require more manual orchestration.
 
@@ -75,27 +76,27 @@ This is a **major differentiator**:
 
 You get **75+ providers** including Ollama, AWS Bedrock, Google, and any OpenAI-compatible self-hosted endpoint [^1_7][^1_18]. Note: Anthropic blocked direct OAuth for OpenCode in January 2026, forcing Claude users through OpenRouter or other proxies [^1_3].
 
-**Codex CLI** is architected as an **OpenAI-first product**. While it authenticates via OpenAI account and the system prompts + tool schemas are tuned specifically for the current Codex model behavior, OpenRouter works — but you sacrifice the model-specific optimization that makes Codex performant [^1_3]. (Model lineup and OpenRouter support change often - check current Codex docs.) There's no first-class `@ai-sdk/openai-compatible`-style adapter. If you want full model freedom, OpenCode is the better choice.
+**Codex CLI** is architected as an **OpenAI-first product**. While it authenticates via OpenAI account and the system prompts + tool schemas are tuned specifically for the current Codex model behavior, OpenRouter works - but you sacrifice the model-specific optimization that makes Codex performant [^1_3]. (Model lineup and OpenRouter support change often - check current Codex docs.) There's no first-class `@ai-sdk/openai-compatible`-style adapter. If you want full model freedom, OpenCode is the better choice.
 
 ## Sandboxing
 
-### Codex CLI — Built-in, Kernel-Level
+### Codex CLI - Built-in, Kernel-Level
 
 Codex CLI has **first-class sandboxing built into the Rust core** [^1_19][^1_5]:
 
 - **Linux**: Uses **Landlock** (Linux Security Module, kernel 5.13+) for filesystem restriction. Can mount paths read-only, block network, restrict writes to workspace [^1_6][^1_19]. Modes: `--sandbox read-only`, `--sandbox workspace-write`, `--sandbox danger-full-access`
-- **Windows**: Uses `WindowsRestrictedToken` (experimental, toggled via `experimental_windows_sandbox`) [^1_4][^1_5] — less mature than Linux
+- **Windows**: Uses `WindowsRestrictedToken` (experimental, toggled via `experimental_windows_sandbox`) [^1_4][^1_5] - less mature than Linux
 - **macOS**: seatbelt (App Sandbox)
 
-On **Ubuntu specifically**, Landlock is the mechanism — it's transparent, low-overhead, and enforced at the kernel level. No container needed.
+On **Ubuntu specifically**, Landlock is the mechanism - it's transparent, low-overhead, and enforced at the kernel level. No container needed.
 
-### OpenCode — External Plugin Only
+### OpenCode - External Plugin Only
 
 OpenCode has **no built-in sandboxing** [^1_20][^1_21]. Your options:
 
-- **`opencode-sandbox` npm plugin** (community): Uses `@anthropic-ai/sandbox-runtime` — seatbelt on macOS, **bubblewrap on Linux** [^1_22]. Configurable filesystem allow/deny lists and network domain filtering via `.opencode/sandbox.json` [^1_22]
+- **`opencode-sandbox` npm plugin** (community): Uses `@anthropic-ai/sandbox-runtime` - seatbelt on macOS, **bubblewrap on Linux** [^1_22]. Configurable filesystem allow/deny lists and network domain filtering via `.opencode/sandbox.json` [^1_22]
 - **Docker** (recommended for both platforms): Run OpenCode inside a container [^1_23][^1_24]
-- **Windows**: No native sandboxing at all — Docker or Hyper-V VM is the only real option
+- **Windows**: No native sandboxing at all - Docker or Hyper-V VM is the only real option
 
 OpenCode also had a notable **unauthenticated RCE vulnerability** discovered in January 2026 [^1_25], highlighting that security is not a core design priority the way it is in Codex CLI.
 
@@ -115,7 +116,7 @@ OpenCode also had a notable **unauthenticated RCE vulnerability** discovered in 
 | Security track record | Solid | RCE vuln (Jan 2026) |
 | Provider lock-in | OpenAI-first | None |
 
-**Bottom line for your use case**: If you want to use OpenRouter or self-hosted models with good function calling, **OpenCode is clearly better**. If you're on OpenAI and need robust built-in sandboxing, long-horizon autonomous runs, and a production-grade multi-agent system, **Codex CLI is the stronger choice** — and yes, the Rust core gives it a real edge in sandboxing performance and streaming fidelity.
+**Bottom line for your use case**: If you want to use OpenRouter or self-hosted models with good function calling, **OpenCode is clearly better**. If you're on OpenAI and need robust built-in sandboxing, long-horizon autonomous runs, and a production-grade multi-agent system, **Codex CLI is the stronger choice** - and yes, the Rust core gives it a real edge in sandboxing performance and streaming fidelity.
 <span style="display:none">[^1_26][^1_27][^1_28][^1_29][^1_30][^1_31][^1_32][^1_33][^1_34][^1_35][^1_36][^1_37][^1_38][^1_39][^1_40][^1_41][^1_42][^1_43][^1_44][^1_45]</span>
 
 <div align="center">⁂</div>
@@ -215,8 +216,7 @@ OpenCode also had a notable **unauthenticated RCE vulnerability** discovered in 
 
 # but Codex CLI can run with custom openAI compatible endpoints like OpenRouter or OLLAMA? and can run with self hosted models like GLM 4.7 or 5 or Kimi K2.5?
 
-it may be less optimized but these models are still useful and work well?
-search for real cases and people sharing their experience in 2026.
+it may be less optimized but these models are still useful and work well? search for real cases and people sharing their experience in 2026.
 
 I lead a course for a bank, on the course we can use private ChatGPT Plus subscriptions, but in they work they will have to use self hosted models only. so I need tools that may work with them.
 
@@ -224,11 +224,11 @@ Security of the tool is also important, so even if OpenCode can run with any sel
 
 is Codex more suitable in that case? or Can we make OpenCode more secure?
 
-Great set of questions — this is very practical for your bank course context. Let me give you the full picture.
+Great set of questions - this is very practical for your bank course context. Let me give you the full picture.
 
 ## Codex CLI + Custom Endpoints: Does It Actually Work?
 
-**Yes, but with a historically important caveat.** The original problem was that Codex CLI used OpenAI's `/v1/responses` endpoint (not `/v1/chat/completions`), while most compatible servers (Ollama, LM Studio, etc.) only spoke the Chat Completions API [^2_1]. This caused early frustration. **However, Ollama added official `/v1/responses` support**, and OpenRouter now has **first-class official documentation** for Codex CLI integration [^2_2]. This is confirmed working as of January–February 2026 [^2_3][^2_4].
+**Yes, but with a historically important caveat.** The original problem was that Codex CLI used OpenAI's `/v1/responses` endpoint (not `/v1/chat/completions`), while most compatible servers (Ollama, LM Studio, etc.) only spoke the Chat Completions API [^2_1]. This caused early frustration. **However, Ollama added official `/v1/responses` support**, and OpenRouter now has **first-class official documentation** for Codex CLI integration [^2_2]. This is confirmed working as of January-February 2026 [^2_3][^2_4].
 
 The configuration in `~/.codex/config.toml` is straightforward [^2_2]:
 
@@ -255,18 +255,18 @@ api_key = "internal-key"
 ```
 
 
-## GLM 4.7 / GLM 5 and Kimi K2 — Real 2026 Experiences
+## GLM 4.7 / GLM 5 and Kimi K2 - Real 2026 Experiences
 
 Real user data from the community as of late 2025/early 2026 [^2_6]:
 
 - **GLM 4.7 / GLM 4.7:thinking**: Works reliably in agentic loops (95%+ of the time) after setting the router transformer to `openrouter` mode, which normalizes output formatting [^2_6]. (GLM-5.2 is the current generation - older 4.x benchmarks below may be outdated.)
-- **Kimi K2**: Problematic. It frequently stops after 2–3 agentic steps, partly because angle brackets in code are misinterpreted as termination tokens, and partly because it adds conversational filler that breaks agent loops [^2_6]. Kimi K2 Thinking is even worse for autonomous use. This is a **real limitation for a course scenario** — students would be fighting the model, not learning the tool.
+- **Kimi K2**: Problematic. It frequently stops after 2-3 agentic steps, partly because angle brackets in code are misinterpreted as termination tokens, and partly because it adds conversational filler that breaks agent loops [^2_6]. Kimi K2 Thinking is even worse for autonomous use. This is a **real limitation for a course scenario** - students would be fighting the model, not learning the tool.
 - **Minimax M2.1/M2.5**: Works cleanly without configuration changes [^2_6].
 - **DeepSeek Coder / DeepSeek V3**: Widely reported to work well on Codex CLI with Ollama [^2_8].
 
 The Reddit consensus [^2_6]: **GLM 4.7 is the best self-hosted option right now** for agentic coding workflows if you're not using OpenAI/Anthropic models.
 
-## Your Bank Course Scenario — The Right Framework
+## Your Bank Course Scenario - The Right Framework
 
 This is a genuinely nuanced situation. You have two different audiences with two different constraints:
 
@@ -277,7 +277,7 @@ This is a genuinely nuanced situation. You have two different audiences with two
 | Security sensitivity | Moderate | **High (bank-grade)** |
 | Best tool | Codex CLI (OpenAI-native) | Either, but with hardening |
 
-The real question is: **can the same tool serve both contexts?** Yes — Codex CLI with OpenRouter or `config.toml` profiles can switch between OpenAI and self-hosted seamlessly [^2_5][^2_2].
+The real question is: **can the same tool serve both contexts?** Yes - Codex CLI with OpenRouter or `config.toml` profiles can switch between OpenAI and self-hosted seamlessly [^2_5][^2_2].
 
 ## Security: Codex CLI vs OpenCode for a Bank Environment
 
@@ -285,16 +285,16 @@ This is where **Codex CLI is clearly the safer default choice for enterprise/ban
 
 ### Codex CLI Sandboxing Advantages
 
-- Landlock (Linux) enforces filesystem isolation at the kernel level — even if a model follows a prompt injection attack, it **cannot read files outside the workspace** [^2_9][^2_10]
-- Three explicit modes: `read-only`, `workspace-write`, `danger-full-access` — you can lock down to `workspace-write` for all bank deployments
+- Landlock (Linux) enforces filesystem isolation at the kernel level - even if a model follows a prompt injection attack, it **cannot read files outside the workspace** [^2_9][^2_10]
+- Three explicit modes: `read-only`, `workspace-write`, `danger-full-access` - you can lock down to `workspace-write` for all bank deployments
 - The Rust core means the sandbox enforcement is not bypassable via Node.js module tricks [^2_11]
-- On Ubuntu specifically, Landlock requires no extra configuration — it's automatic at kernel level
+- On Ubuntu specifically, Landlock requires no extra configuration - it's automatic at kernel level
 
 
 ### OpenCode Security Gaps
 
-- No built-in sandbox — requires manual Docker setup or the `opencode-sandbox` npm plugin [^2_12][^2_13]
-- Had an **unauthenticated RCE vulnerability** discovered in January 2026 [^2_14] — this is a serious red flag for banking environments
+- No built-in sandbox - requires manual Docker setup or the `opencode-sandbox` npm plugin [^2_12][^2_13]
+- Had an **unauthenticated RCE vulnerability** discovered in January 2026 [^2_14] - this is a serious red flag for banking environments
 - Prompt injection via malicious code files could theoretically exfiltrate data to a model that "phones home" via tool calls if tool permissions are broad
 
 
@@ -302,7 +302,7 @@ This is where **Codex CLI is clearly the safer default choice for enterprise/ban
 
 Yes, but it requires deliberate effort [^2_15][^2_13]:
 
-1. **Run inside Docker** — the officially supported path for enterprise use [^2_15]
+1. **Run inside Docker** - the officially supported path for enterprise use [^2_15]
 2. **Use `opencode-sandbox` plugin** with a strict `.opencode/sandbox.json` (whitelist filesystem paths, block network domains except your model endpoint)
 3. **Use `--no-mcp`** flag to disable all MCP servers unless explicitly needed
 4. **Apply Landlock manually** on Linux via bubblewrap (the plugin does this on Linux) [^2_13]
@@ -313,8 +313,8 @@ However, for students learning to use these tools in a bank context, **teaching 
 
 For the **bank training scenario**, structure it this way:
 
-- **During course (ChatGPT Plus)**: Use Codex CLI with the standard OpenAI config — students get the best model quality and the full feature set without friction
-- **For the "at work" module**: Switch to a Codex CLI `config.toml` profile pointing at the bank's internal OpenAI-compatible endpoint running **GLM 4.7 or GLM 5** — the most reliable self-hosted model for agentic loops [^2_6]
+- **During course (ChatGPT Plus)**: Use Codex CLI with the standard OpenAI config - students get the best model quality and the full feature set without friction
+- **For the "at work" module**: Switch to a Codex CLI `config.toml` profile pointing at the bank's internal OpenAI-compatible endpoint running **GLM 4.7 or GLM 5** - the most reliable self-hosted model for agentic loops [^2_6]
 - **Security layer**: Always run with `--sandbox workspace-write` on Linux. On Windows (which some bank workstations will be), push for Docker + WSL2 since native Windows sandboxing in Codex is still experimental [^2_9]
 - **Prompt injection defense**: Teach the AGENTS.md pattern to define strict system boundaries, and use approval mode (`--approval-mode`) so the model asks before executing any shell command [^2_16][^2_17]
 
@@ -404,14 +404,14 @@ This is a great architectural question and the answer matters a lot for your ban
 
 This is the most important misconception to clear up. WSL2 is a **lightweight Hyper-V VM**, not a container, and it has several fundamental isolation gaps [^3_1][^3_2]:
 
-- **Windows can read WSL2 filesystem directly** via `\\wsl$\Ubuntu\...` from any Windows process — no permission required
-- **All WSL2 distros share a single Linux kernel instance** — one distro can modify kernel parameters that affect all others [^3_1]
+- **Windows can read WSL2 filesystem directly** via `\\wsl$\Ubuntu\...` from any Windows process - no permission required
+- **All WSL2 distros share a single Linux kernel instance** - one distro can modify kernel parameters that affect all others [^3_1]
 - **Users can access the Docker-Desktop WSL distro directly** via `wsl -d docker-desktop`, bypassing all Docker Desktop security settings [^3_1]
 - There is no wall between your Ubuntu WSL2 env and the Windows host at the filesystem level
 
-So WSL2 Ubuntu gives you a **Linux environment**, not a **security boundary**. Critically though — **Codex CLI's Landlock sandbox still works and has real value inside WSL2**, because it restricts what the Codex process can access *within Linux*, regardless of the WSL2 host boundary. It just doesn't protect WSL2 from Windows.
+So WSL2 Ubuntu gives you a **Linux environment**, not a **security boundary**. Critically though - **Codex CLI's Landlock sandbox still works and has real value inside WSL2**, because it restricts what the Codex process can access *within Linux*, regardless of the WSL2 host boundary. It just doesn't protect WSL2 from Windows.
 
-## The Docker-in-WSL2 Topology — Three Distinct Scenarios
+## The Docker-in-WSL2 Topology - Three Distinct Scenarios
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -434,7 +434,7 @@ So WSL2 Ubuntu gives you a **Linux environment**, not a **security boundary**. C
 - ✅ Codex CLI Landlock blocks the AI agent from touching files outside the workspace (kernel-enforced)
 - ✅ No Docker complexity, runs fast, easy for course attendees
 - ❌ Windows host can still read/write WSL2 files
-- ❌ No network isolation — malicious model output could exfiltrate data via shell commands unless `--no-network` is also set
+- ❌ No network isolation - malicious model output could exfiltrate data via shell commands unless `--no-network` is also set
 - **Best for**: course environment, students learning the tool, non-critical projects
 
 
@@ -444,13 +444,16 @@ You install `docker-ce` inside your Ubuntu distro directly [^3_3]:
 
 ```bash
 curl -fsSL https://get.docker.com | sh
+```
+
+```bash
 sudo usermod -aG docker $USER
 ```
 
 Then run Codex CLI inside a Docker container:
 
 - ✅ Real container filesystem isolation on top of Landlock
-- ✅ No Docker Desktop license requirement (relevant for banks — Docker Desktop requires a paid license for companies >250 employees)
+- ✅ No Docker Desktop license requirement (relevant for banks - Docker Desktop requires a paid license for companies >250 employees)
 - ✅ Network namespace isolation per container
 - ❌ **No Docker Desktop Agent Sandbox features** (no credential injection proxy, no ECI, no Settings Management)
 - ❌ Containers still share the WSL2 kernel with the host Ubuntu distro
@@ -461,14 +464,14 @@ Then run Codex CLI inside a Docker container:
 
 Docker Desktop runs its own `docker-desktop` WSL2 distro. Agent Sandbox works here [^3_4]:
 
-- ✅ Credential injection proxy — your API keys are intercepted and injected transparently, never stored in container env [^3_4]
+- ✅ Credential injection proxy - your API keys are intercepted and injected transparently, never stored in container env [^3_4]
 - ✅ `opencode` and Codex CLI both have official Docker sandbox templates [^3_5][^3_4]
-- ⚠️ Enhanced Container Isolation (ECI) is **weaker on WSL2 backend** than Hyper-V [^3_1] — users can access `docker-desktop` distro directly and bypass security settings
+- ⚠️ Enhanced Container Isolation (ECI) is **weaker on WSL2 backend** than Hyper-V [^3_1] - users can access `docker-desktop` distro directly and bypass security settings
 - ❌ CVE-2025-9074 (patched in 4.44.3) was specifically a WSL2 shared-kernel attack vector [^3_6][^3_7]
 - **Requires Docker Desktop ≥ 4.44.3** to be safe
 
 
-### Scenario D: Docker Desktop (Hyper-V backend) + ECI ← Maximum security
+### Scenario D: Docker Desktop (Hyper-V backend) + ECI <- Maximum security
 
 | Security feature | WSL2 backend | Hyper-V backend |
 | :-- | :-- | :-- |
@@ -480,9 +483,9 @@ Docker Desktop runs its own `docker-desktop` WSL2 distro. Agent Sandbox works he
 
 Docker official recommendation: **use Hyper-V for maximum security** [^3_1]. ECI on Hyper-V means even if the AI model follows a prompt injection and tries to escape the container, it hits a dedicated kernel boundary, not the shared WSL2 kernel. This is the architecture you'd want for a real bank deployment.
 
-The tradeoff is performance — Hyper-V mode is slower for file I/O than WSL2 backend — but for a coding agent that's bottlenecked by LLM latency anyway, it barely matters.
+The tradeoff is performance - Hyper-V mode is slower for file I/O than WSL2 backend - but for a coding agent that's bottlenecked by LLM latency anyway, it barely matters.
 
-## The Credential Injection Feature — Is It Worth It?
+## The Credential Injection Feature - Is It Worth It?
 
 Docker Agent Sandbox's credential proxy is genuinely useful in a bank scenario [^3_4]: API keys are set as environment variables in your shell config, and the sandbox proxy **intercepts all API calls and injects credentials transparently**. This means:
 
@@ -496,13 +499,13 @@ However, this feature requires **Docker Desktop** (not Docker Engine inside WSL)
 
 For the **training machines during the course**:
 
-- **Scenario A** (WSL2 + Codex CLI `--sandbox workspace-write`) is enough — it's simple, fast, and teaches the right patterns without fighting Docker complexity
+- **Scenario A** (WSL2 + Codex CLI `--sandbox workspace-write`) is enough - it's simple, fast, and teaches the right patterns without fighting Docker complexity
 - Add `--no-network` or use an approval policy for shell commands to prevent network exfiltration
 
 For the **"this is how you'd deploy it at the bank" demo**:
 
 - Show Scenario D on one machine to illustrate the full security stack
-- Key point to teach: **depth of defense** — Codex Landlock + Docker container + Hyper-V VM isolation are three independent layers, any one of which would stop most AI agent escape scenarios
+- Key point to teach: **depth of defense** - Codex Landlock + Docker container + Hyper-V VM isolation are three independent layers, any one of which would stop most AI agent escape scenarios
 - WSL2 alone is *not* a security boundary vs. the Windows host, but it IS a Linux environment where real kernel-level security tools (Landlock, namespaces, seccomp) work correctly [^3_8]
 <span style="display:none">[^3_10][^3_11][^3_12][^3_13][^3_14][^3_15][^3_16][^3_9]</span>
 
@@ -545,9 +548,7 @@ For the **"this is how you'd deploy it at the bank" demo**:
 
 # as training VMs we have Windows Server 2022 where Docker Desktop is not supported.
 
-do you think as main course env just codex with sandbox directly on Windows in either power shell or git bash should be enough? for most of the course material?
-But Bash will provide more binaries that agents sometimes try to use, so maybe safer?
-I also plan to show Codex Desktop app which shares configs and sessions with both local codex cli and cloud sessions. it won't work inside WSL, and would not share sessions with WSL Codex clu, yes?
+do you think as main course env just codex with sandbox directly on Windows in either power shell or git bash should be enough? for most of the course material? But Bash will provide more binaries that agents sometimes try to use, so maybe safer? I also plan to show Codex Desktop app which shares configs and sessions with both local codex cli and cloud sessions. it won't work inside WSL, and would not share sessions with WSL Codex clu, yes?
 
 or should I use codex cli inside WSL most of the time with codex sandbox only? is it better for agents to run vs git bash? less risky?
 
@@ -557,9 +558,9 @@ This has very practical implications for the course design. Let me give you a cl
 
 ## Docker Desktop on Windows Server 2022
 
-Confirmed: **fully unsupported, full stop** [^4_1][^4_2][^4_3]. Not a licensing issue — it's architecturally not compatible with Windows Server editions at all. Docker Engine (CE/Moby) can be installed on Server 2022, but you lose every advanced feature you were considering: no ECI, no Agent Sandbox, no credential injection proxy. For your course, Docker is off the table.
+Confirmed: **fully unsupported, full stop** [^4_1][^4_2][^4_3]. Not a licensing issue - it's architecturally not compatible with Windows Server editions at all. Docker Engine (CE/Moby) can be installed on Server 2022, but you lose every advanced feature you were considering: no ECI, no Agent Sandbox, no credential injection proxy. For your course, Docker is off the table.
 
-## Native Windows Sandbox — It's Actually Real and Sufficient
+## Native Windows Sandbox - It's Actually Real and Sufficient
 
 This is the good news: Codex CLI has a **proper native Windows sandbox** that doesn't require WSL or Docker at all [^4_4]. It has two modes, configured in `config.toml`:
 
@@ -574,11 +575,11 @@ sandbox = "elevated"   # or "unelevated"
 - **Filesystem ACLs**: writes blocked outside the working directory
 - **Windows Firewall rules**: network access blocked by default, requires explicit approval [^4_4]
 
-This is meaningful isolation for a course — the agent genuinely cannot reach outside the project folder. It's not Landlock-grade kernel enforcement, but for training scenarios it's entirely adequate.
+This is meaningful isolation for a course - the agent genuinely cannot reach outside the project folder. It's not Landlock-grade kernel enforcement, but for training scenarios it's entirely adequate.
 
-## PowerShell vs Git Bash — This Is a Real Problem
+## PowerShell vs Git Bash - This Is a Real Problem
 
-This is not just a comfort question — there's a documented functional issue. Codex agents running on Windows **consistently misbehave in PowerShell**: they generate bash-style commands, fail, then spiral into trying random PS equivalents or Python workarounds [^4_5]. The community workaround is installing Git Bash and telling the agent to use bash explicitly [^4_5]:
+This is not just a comfort question - there's a documented functional issue. Codex agents running on Windows **consistently misbehave in PowerShell**: they generate bash-style commands, fail, then spiral into trying random PS equivalents or Python workarounds [^4_5]. The community workaround is installing Git Bash and telling the agent to use bash explicitly [^4_5]:
 
 ```
 "Please use bash, do not use powershell"
@@ -588,31 +589,31 @@ However, there's a tension here:
 
 - **Git Bash** gives the agent familiar Unix tools (grep, sed, awk, curl, find) and makes tasks run smoothly
 - **Windows Sandbox integration** is tested and most reliable from native Windows Terminal / PowerShell context
-- **Git Bash + sandbox** can work, but sandbox enforcement is technically a Windows-native construct sitting beneath the shell layer — it's still active regardless of which shell is on top
+- **Git Bash + sandbox** can work, but sandbox enforcement is technically a Windows-native construct sitting beneath the shell layer - it's still active regardless of which shell is on top
 
 **Recommendation for course**: Use Windows Terminal with Git Bash profile, with `sandbox = "elevated"` in config. The sandbox operates at the process/ACL level, not the shell level, so it protects you regardless of which shell is used.
 
-## Codex Desktop App + WSL — Session Sharing Problem
+## Codex Desktop App + WSL - Session Sharing Problem
 
 You correctly identified this issue. Here's the real situation [^4_6][^4_7]:
 
-- The Codex Desktop app is a **Windows native application** — it cannot run inside WSL
-- It connects to Codex CLI via a **local loopback bridge** (`127.0.0.1:PORT`) — this works when CLI is running on Windows natively
-- When Codex CLI runs inside WSL2, the loopback is **not the same loopback** — WSL2 has its own network namespace with a virtual IP, and the Desktop app polling `127.0.0.1` won't find the WSL2 process [^4_6]
-- Config (`config.toml`) lives at `C:\Users\<user>\.codex\config.toml` for Windows/Desktop, and at `~/.codex/config.toml` in WSL — **two separate configs**, not synced
+- The Codex Desktop app is a **Windows native application** - it cannot run inside WSL
+- It connects to Codex CLI via a **local loopback bridge** (`127.0.0.1:PORT`) - this works when CLI is running on Windows natively
+- When Codex CLI runs inside WSL2, the loopback is **not the same loopback** - WSL2 has its own network namespace with a virtual IP, and the Desktop app polling `127.0.0.1` won't find the WSL2 process [^4_6]
+- Config (`config.toml`) lives at `C:\Users\<user>\.codex\config.toml` for Windows/Desktop, and at `~/.codex/config.toml` in WSL - **two separate configs**, not synced
 - Session history is also stored separately
 
-The workaround (from community) is to install Codex on Windows natively, then configure the Desktop app to *invoke* WSL as the execution backend — but this is fiddly and not the happy path [^4_7].
+The workaround (from community) is to install Codex on Windows natively, then configure the Desktop app to *invoke* WSL as the execution backend - but this is fiddly and not the happy path [^4_7].
 
-## Course Architecture — Practical Design
+## Course Architecture - Practical Design
 
 Given all constraints (Windows Server 2022, no Docker Desktop, mixed use of Desktop app), here's what I'd structure:
 
-**Module 1–3: Core workflows** → Codex CLI natively on Windows, Windows Terminal + Git Bash, `sandbox = "elevated"`. Simple to set up, works reliably, sandbox is real. Students get the right mental model of approval policies and sandbox limits.
+**Module 1-3: Core workflows** -> Codex CLI natively on Windows, Windows Terminal + Git Bash, `sandbox = "elevated"`. Simple to set up, works reliably, sandbox is real. Students get the right mental model of approval policies and sandbox limits.
 
-**Module 4: Codex Desktop App** → Run on Windows natively (same machine), same `config.toml`. Sessions and context flow between Desktop app and native CLI here because both are on the Windows path. **This breaks if you switch to WSL during the same session** — teach this boundary explicitly.
+**Module 4: Codex Desktop App** -> Run on Windows natively (same machine), same `config.toml`. Sessions and context flow between Desktop app and native CLI here because both are on the Windows path. **This breaks if you switch to WSL during the same session** - teach this boundary explicitly.
 
-**Module 5: WSL2 + Landlock (Linux-grade sandbox)** → Separate module where WSL2 is the environment. Explain clearly this is a different isolated context with a stronger sandbox (kernel Landlock vs Windows ACLs), but no Desktop app integration. Ideal for showing the more advanced Linux-native security story.
+**Module 5: WSL2 + Landlock (Linux-grade sandbox)** -> Separate module where WSL2 is the environment. Explain clearly this is a different isolated context with a stronger sandbox (kernel Landlock vs Windows ACLs), but no Desktop app integration. Ideal for showing the more advanced Linux-native security story.
 
 **Module 6 (demo-only on your laptop)**: Docker Desktop + ECI + Agent Sandbox on Windows 11/macOS. No hands-on exercises, just a live demo showing credential injection and Hyper-V container escape prevention. Since students can't reproduce it on their VMs, frame it as "this is the production-grade bank deployment model to advocate for with your IT team."
 
@@ -665,8 +666,7 @@ The **key teaching moment** worth building a slide around: security is layered, 
 
 # does Claude Code also support other models? I know it is possible to override the API enddpoint and use OpenRouter or Z.ai compatible endpoints, so we can use this tool with different models than Claude?
 
-but search for opinions and use cases how good it works with different models?
-and can we use Claude Code Desktop with different endpoint too or is it only based on Claude subscription and doesn't work with custom env variables with custom endpoints and APIs keys?
+but search for opinions and use cases how good it works with different models? and can we use Claude Code Desktop with different endpoint too or is it only based on Claude subscription and doesn't work with custom env variables with custom endpoints and APIs keys?
 
 does it support self hosted models with eg Ollama? does Ollama have compatible endpoint?
 
@@ -678,42 +678,54 @@ Claude Code supports a fully undocumented-but-working override via environment v
 
 ```bash
 export ANTHROPIC_BASE_URL="https://openrouter.ai/api/v1"
-export ANTHROPIC_AUTH_TOKEN="your-openrouter-key"
-export ANTHROPIC_MODEL="openai/gpt-oss-20b"  # or any model slug
 ```
 
-This works because Claude Code uses the Anthropic Messages API format, and any proxy that translates between OpenAI/Anthropic formats can sit in the middle [^5_2]. OpenRouter explicitly documents this for Claude Code now [^5_3]. The key limitation is that Claude Code sends requests formatted as Claude API calls — so the endpoint **must speak Anthropic Messages API format**, not just OpenAI Chat Completions.
+```bash
+export ANTHROPIC_AUTH_TOKEN="your-openrouter-key"
+```
 
-## Ollama — Yes, Now Officially Compatible
+```bash
+export ANTHROPIC_MODEL="openai/gpt-oss-20b"
+```
 
-In **January 2026, Ollama added native support for the Anthropic Messages API** [^5_4][^5_5]. This is the key unlock — previously you needed a proxy. Now you just point Claude Code directly:
+This works because Claude Code uses the Anthropic Messages API format, and any proxy that translates between OpenAI/Anthropic formats can sit in the middle [^5_2]. OpenRouter explicitly documents this for Claude Code now [^5_3]. The key limitation is that Claude Code sends requests formatted as Claude API calls - so the endpoint **must speak Anthropic Messages API format**, not just OpenAI Chat Completions.
+
+## Ollama - Yes, Now Officially Compatible
+
+In **January 2026, Ollama added native support for the Anthropic Messages API** [^5_4][^5_5]. This is the key unlock - previously you needed a proxy. Now you just point Claude Code directly:
 
 ```bash
 export ANTHROPIC_BASE_URL="http://localhost:11434"
+```
+
+```bash
 export ANTHROPIC_AUTH_TOKEN="ollama"
-export ANTHROPIC_MODEL="glm4:latest"  # or deepseek-coder, qwen3, etc.
+```
+
+```bash
+export ANTHROPIC_MODEL="glm4:latest"
 ```
 
 Docker Model Runner also exposes an Anthropic-compatible API and works the same way [^5_5]. These are confirmed working setups as of early 2026.
 
 ## Real-World Quality: Honest Community Feedback (2026)
 
-This is where it gets honest — and for your bank course context, this matters a lot:
+This is where it gets honest - and for your bank course context, this matters a lot:
 
 **Models that work reasonably well in Claude Code:**
 
-- **GLM 5 / GLM 4.7** — users in March 2026 report GLM 5 matching or exceeding Claude Opus 4.6 on several benchmarks [^5_6][^5_7]. One user: *"Today I find GLM 5 to be better than Codex 5.3-Medium in quality of output and thoroughness"* [^5_6]. GLM 4.7 reliably completes agentic loops [^5_8]
-- **Qwen3-Coder** — strong coding performance, widely used via OpenRouter free tier [^5_9][^5_10]
-- **DeepSeek V3** — great for architecture/planning, slightly weaker for agentic execution [^5_11]
-- **MiniMax M2.1** — *"almost as good as Claude Code, runs at ~30 tokens/sec with 160GB VRAM"* [^5_12]; also works locally but requires significant prompting guidance [^5_13]
-- **Kimi K2 via OpenRouter** — *"speedy and effective but doesn't match Opus/Sonnet"* [^5_13] — however known agentic loop issues as discussed earlier
+- **GLM 5 / GLM 4.7** - users in March 2026 report GLM 5 matching or exceeding Claude Opus 4.6 on several benchmarks [^5_6][^5_7]. One user: *"Today I find GLM 5 to be better than Codex 5.3-Medium in quality of output and thoroughness"* [^5_6]. GLM 4.7 reliably completes agentic loops [^5_8]
+- **Qwen3-Coder** - strong coding performance, widely used via OpenRouter free tier [^5_9][^5_10]
+- **DeepSeek V3** - great for architecture/planning, slightly weaker for agentic execution [^5_11]
+- **MiniMax M2.1** - *"almost as good as Claude Code, runs at ~30 tokens/sec with 160GB VRAM"* [^5_12]; also works locally but requires significant prompting guidance [^5_13]
+- **Kimi K2 via OpenRouter** - *"speedy and effective but doesn't match Opus/Sonnet"* [^5_13] - however known agentic loop issues as discussed earlier
 
 **What consistently degrades without Claude:**
 
 - Multi-step autonomous task completion (models stop mid-task or go off-track)
 - Complex refactoring across many files simultaneously
 - The precise instruction-following that makes Claude Code's tool use so reliable
-- Community consensus [^5_14]: *"the reason Claude Code works so well is partially the model (current `opus` alias / Opus 4.8) AND the harness — removing either degrades quality"*
+- Community consensus [^5_14]: *"the reason Claude Code works so well is partially the model (current `opus` alias / Opus 4.8) AND the harness - removing either degrades quality"*
 
 The honest framing for your students: **these models work for learning the tool**, but in production the gap to Claude is real and meaningful.
 
@@ -742,22 +754,25 @@ For switching between multiple models without changing env vars, **Claude Code R
 
 Then: `export ANTHROPIC_BASE_URL="http://localhost:9090"` [^5_10]. This is useful for course demos where you want to switch models live without restarting the session.
 
-For **enterprise/bank use** there's also **LiteLLM** as a centrally managed proxy — more ops overhead but gives you one endpoint that the whole team points at, with model aliasing, logging, and rate limiting [^5_15].
+For **enterprise/bank use** there's also **LiteLLM** as a centrally managed proxy - more ops overhead but gives you one endpoint that the whole team points at, with model aliasing, logging, and rate limiting [^5_15].
 
 ## Claude Code Desktop App + Custom Endpoints
 
-The Desktop app (the ChatGPT/Cursor-style interface) reads from the **same environment variables** as the CLI — `ANTHROPIC_BASE_URL` set in your shell profile or `.env` applies to both [^5_5][^5_1]. It is NOT hardcoded to only Anthropic subscriptions. However:
+The Desktop app (the ChatGPT/Cursor-style interface) reads from the **same environment variables** as the CLI - `ANTHROPIC_BASE_URL` set in your shell profile or `.env` applies to both [^5_5][^5_1]. It is NOT hardcoded to only Anthropic subscriptions. However:
 
-- It still uses the **Anthropic Messages API schema** internally — so the endpoint still needs to speak that format or proxy it
+- It still uses the **Anthropic Messages API schema** internally - so the endpoint still needs to speak that format or proxy it
 - OpenRouter works confirmed [^5_16]
-- Azure AI Foundry has **first-class official support** via `CLAUDE_CODE_USE_FOUNDRY=1` + `ANTHROPIC_FOUNDRY_RESOURCE` — this is likely the most relevant for a bank that has Azure enterprise agreements [^5_17]:
+- Azure AI Foundry has **first-class official support** via `CLAUDE_CODE_USE_FOUNDRY=1` + `ANTHROPIC_FOUNDRY_RESOURCE` - this is likely the most relevant for a bank that has Azure enterprise agreements [^5_17]:
 
 ```bash
 export CLAUDE_CODE_USE_FOUNDRY=1
+```
+
+```bash
 export ANTHROPIC_FOUNDRY_RESOURCE=your-azure-resource-name
 ```
 
-This is worth a dedicated slide in your course — many banks already have Azure AI Foundry access and wouldn't need to set up a separate Ollama server at all.
+This is worth a dedicated slide in your course - many banks already have Azure AI Foundry access and wouldn't need to set up a separate Ollama server at all.
 
 ## For Your Bank Course: Model Strategy
 
@@ -768,7 +783,7 @@ This is worth a dedicated slide in your course — many banks already have Azure
 | At work, fully air-gapped | Ollama + Anthropic-compatible API | GLM 5 or Qwen3-Coder self-hosted |
 | Learning/testing budget | OpenRouter CCR proxy | Qwen3-Coder:free or GPT-OSS-20b:free |
 
-The Azure Foundry path [^5_17] is the most credible "here's how your bank would deploy this" story — it keeps data in the bank's Azure tenant, uses existing enterprise agreements, and doesn't require IT to approve a new vendor. That might be the strongest practical takeaway for your banking audience.
+The Azure Foundry path [^5_17] is the most credible "here's how your bank would deploy this" story - it keeps data in the bank's Azure tenant, uses existing enterprise agreements, and doesn't require IT to approve a new vendor. That might be the strongest practical takeaway for your banking audience.
 <span style="display:none">[^5_18][^5_19][^5_20][^5_21][^5_22][^5_23][^5_24][^5_25][^5_26][^5_27][^5_28]</span>
 
 <div align="center">⁂</div>
@@ -846,24 +861,21 @@ some of them also use JetBrains IntelliJ but without any AI models and plugins b
 
 it also supports ACP catalog of agents and we can use e.g. OpenCode or Gemini CLI as ACP, but I don't see option to use ClaudeCode and Codex as ACP. is that true? can you search and confirm?
 
-they can take free trial on these VMs to use credits from jetbrains but since they won't be able to use it at work and from my experience these tools works much worse than agents from Codex or Claude code CLI directly, not sure if it makes sense to show them at all?
-maybe I will only tell the difference, explain that CLI tools and desktop apps from codex and Claude are much better and provide much more functionality and we will not use AI assistant inside IntelliJ?
-they can use it for checking code and commuting or starting the project if they like it, because the demo app we will build during the course will be in Java Spring AI backend with React or Angular frontend, but we will use agents outside IntelliJ all the time (in IntelliJ build in terminal if they prefer, but I installed and configured WezTerm on VMs which is better to TUI and both codex and Claude CLI, so AI will recommend it).
+they can take free trial on these VMs to use credits from jetbrains but since they won't be able to use it at work and from my experience these tools works much worse than agents from Codex or Claude code CLI directly, not sure if it makes sense to show them at all? maybe I will only tell the difference, explain that CLI tools and desktop apps from codex and Claude are much better and provide much more functionality and we will not use AI assistant inside IntelliJ? they can use it for checking code and commuting or starting the project if they like it, because the demo app we will build during the course will be in Java Spring AI backend with React or Angular frontend, but we will use agents outside IntelliJ all the time (in IntelliJ build in terminal if they prefer, but I installed and configured WezTerm on VMs which is better to TUI and both codex and Claude CLI, so AI will recommend it).
 
 one person also prefer VSCode so imho it doesn't matter so much which IDE they use if we use external agents all the time either way?
 
-what do you think about this plan?
-validate my information about IntelliJ AI assistant
+what do you think about this plan? validate my information about IntelliJ AI assistant
 
-This is an excellent course design — the logic is solid and the trade-offs you're making are the right ones. Let me validate everything and correct a couple of important details about the ACP/IntelliJ picture.
+This is an excellent course design - the logic is solid and the trade-offs you're making are the right ones. Let me validate everything and correct a couple of important details about the ACP/IntelliJ picture.
 
-## Your Course Plan — Validated ✅
+## Your Course Plan - Validated ✅
 
-The structure you outlined is well thought out. The key insight — **use Codex+OpenAI subscriptions for the real learning, use OpenRouter/Ollama only for "this is how your work setup will look"** — is exactly right pedagogically. Students burn tokens learning agentic patterns, not fighting model quality degradation. The "show Claude Code as an alternative philosophy" module is also genuinely valuable because the bash-first vs RPC tool model is a conceptual difference worth understanding, not just a UI preference.
+The structure you outlined is well thought out. The key insight - **use Codex+OpenAI subscriptions for the real learning, use OpenRouter/Ollama only for "this is how your work setup will look"** - is exactly right pedagogically. Students burn tokens learning agentic patterns, not fighting model quality degradation. The "show Claude Code as an alternative philosophy" module is also genuinely valuable because the bash-first vs RPC tool model is a conceptual difference worth understanding, not just a UI preference.
 
 Dropping OpenCode was the right call. Three CLI agents would confuse the message.
 
-## JetBrains AI Assistant — Custom Endpoints: YES, Natively Supported
+## JetBrains AI Assistant - Custom Endpoints: YES, Natively Supported
 
 Your intuition was approximately right but the actual support is **better than you thought**. As of the current official docs (March 2026), JetBrains AI Assistant natively supports [^6_1][^6_2]:
 
@@ -872,13 +884,13 @@ Your intuition was approximately right but the actual support is **better than y
 - **Any OpenAI-compatible endpoint** (LiteLLM, custom internal servers) [^6_1]
 - **Anthropic Claude** directly
 
-No proxy needed, no hacks — it's in Settings → Third-party AI Providers, select provider, paste URL, Test Connection [^6_1]. So if the bank deploys a GLM 5 server internally, AI Assistant *can* talk to it. **But the real constraint remains network policy** — if the IDE can't reach the internal model server, that's an IT firewall issue, not a JetBrains limitation.
+No proxy needed, no hacks - it's in Settings -> Third-party AI Providers, select provider, paste URL, Test Connection [^6_1]. So if the bank deploys a GLM 5 server internally, AI Assistant *can* talk to it. **But the real constraint remains network policy** - if the IDE can't reach the internal model server, that's an IT firewall issue, not a JetBrains limitation.
 
-## Codex and Claude Code in JetBrains — NOT ACP Agents
+## Historical claim, superseded 5.11.2026: Codex and Claude Code in JetBrains - NOT ACP Agents
 
 This is the important correction. You were right to be suspicious. Here's the exact picture [^6_3][^6_4][^6_5]:
 
-**ACP Registry agents (January 2026 launch)** — available as ACP agents inside JetBrains IDEs [^6_4]:
+**ACP Registry agents (January 2026 launch)** - available as ACP agents inside JetBrains IDEs [^6_4]:
 
 
 | Agent in ACP Registry | Notes |
@@ -889,23 +901,23 @@ This is the important correction. You were right to be suspicious. Here's the ex
 | Qwen Code | ✅ via ACP |
 | Auggie CLI | ✅ via ACP |
 | Mistral Vibe | ✅ via ACP |
-| **Codex CLI** | ❌ NOT in ACP Registry |
+| **Codex CLI** | Historical claim superseded 5.11.2026: Codex is available through the current ACP Registry integration; see correction above. |
 | **Claude Code** | ❌ NOT in ACP Registry |
 
-Codex and Claude Code are integrated via **direct proprietary SDK integrations**, not ACP [^6_3][^6_5]. This has a specific consequence: Zed had to build a custom wrapper for Claude Code because it *doesn't speak ACP natively*, and a separate adapter for Codex [^6_3]. JetBrains did the same — the Codex integration uses the OpenAI Codex SDK directly, which is why [^6_7] there are known issues trying to redirect it to custom OpenAI-compatible endpoints (it works only for the official OpenAI Codex endpoint). The Claude Code integration in JetBrains Air calls the Anthropic SDK directly [^6_8].
+Codex and Claude Code are integrated via **direct proprietary SDK integrations**, not ACP [^6_3][^6_5]. This has a specific consequence: Zed had to build a custom wrapper for Claude Code because it *doesn't speak ACP natively*, and a separate adapter for Codex [^6_3]. JetBrains did the same - the Codex integration uses the OpenAI Codex SDK directly, which is why [^6_7] there are known issues trying to redirect it to custom OpenAI-compatible endpoints (it works only for the official OpenAI Codex endpoint). The Claude Code integration in JetBrains Air calls the Anthropic SDK directly [^6_8].
 
-So to be precise about the custom endpoint question for Junie/Air specifically: **the native Codex panel inside JetBrains routes to OpenAI only**, and the Claude Agent routes to Anthropic only. You cannot substitute a self-hosted model in those specific panels. The generic AI Assistant chat (third-party providers) is a separate system where Ollama/custom endpoints *do* work — but that's just an inline chat, not an autonomous agent loop.
+So to be precise about the custom endpoint question for Junie/Air specifically: **the native Codex panel inside JetBrains routes to OpenAI only**, and the Claude Agent routes to Anthropic only. You cannot substitute a self-hosted model in those specific panels. The generic AI Assistant chat (third-party providers) is a separate system where Ollama/custom endpoints *do* work - but that's just an inline chat, not an autonomous agent loop.
 
 ## Should You Show IntelliJ AI at All?
 
 Your instinct to skip deep coverage is correct. Here's the clearest framing for your decision:
 
-**Arguments for a brief mention only (5–10 min):**
+**Arguments for a brief mention only (5-10 min):**
 
 - Participants genuinely cannot use external model calls at work, so even the best JetBrains integration is blocked at the firewall
-- The agent quality inside the IDE panel is measurably weaker than CLI-native agents — JetBrains itself admits this indirectly by saying "not everything their SDK offers is available via ACP" [^6_3]
+- The agent quality inside the IDE panel is measurably weaker than CLI-native agents - JetBrains itself admits this indirectly by saying "not everything their SDK offers is available via ACP" [^6_3]
 - IDEs abstract away the tool calls and sandbox behavior which are core to what you're teaching
-- WezTerm being pre-installed on the VMs is actually the right call — Codex and Claude Code's TUI rendering (colors, streaming, diff views) is designed for proper terminal emulators
+- WezTerm being pre-installed on the VMs is actually the right call - Codex and Claude Code's TUI rendering (colors, streaming, diff views) is designed for proper terminal emulators
 
 **What the brief mention should cover:**
 
@@ -914,11 +926,11 @@ Your instinct to skip deep coverage is correct. Here's the clearest framing for 
 - Explain that the Codex and Claude integrations in JetBrains are SDK-native and OpenAI/Anthropic-only, so they'd need the CLI anyway for self-hosted model work
 - Frame it as: *"the terminal agents we've been learning are intentionally more powerful than what fits inside an IDE panel"*
 
-Since participants are building a **Java Spring AI backend + React/Angular frontend**, the most compelling JetBrains-relevant point is actually the **Java compilation/build feedback loop** — running `mvn test` or Gradle from inside IntelliJ vs running it from the agent's bash tools. That's a real workflow decision worth 5 minutes of discussion: sometimes IDE build integration beats what an agent can see.
+Since participants are building a **Java Spring AI backend + React/Angular frontend**, the most compelling JetBrains-relevant point is actually the **Java compilation/build feedback loop** - running `mvn test` or Gradle from inside IntelliJ vs running it from the agent's bash tools. That's a real workflow decision worth 5 minutes of discussion: sometimes IDE build integration beats what an agent can see.
 
 ## On the IDE Question (VSCode vs IntelliJ)
 
-You're exactly right that it doesn't matter much when the AI is an external agent. The IDE becomes a file viewer and git client. The one real exception is **language-server features** (Java type inference, Spring Boot auto-complete, Angular service resolution) where IntelliJ IDEA is genuinely ahead of VSCode for Java — and for their daily work that's probably worth mentioning. But for the course's AI agent exercises, WezTerm + Codex CLI outside any IDE is the better learning surface, and you can run it in an IntelliJ built-in terminal or WezTerm interchangeably [^6_3].
+You're exactly right that it doesn't matter much when the AI is an external agent. The IDE becomes a file viewer and git client. The one real exception is **language-server features** (Java type inference, Spring Boot auto-complete, Angular service resolution) where IntelliJ IDEA is genuinely ahead of VSCode for Java - and for their daily work that's probably worth mentioning. But for the course's AI agent exercises, WezTerm + Codex CLI outside any IDE is the better learning surface, and you can run it in an IntelliJ built-in terminal or WezTerm interchangeably [^6_3].
 <span style="display:none">[^6_10][^6_11][^6_12][^6_13][^6_14][^6_15][^6_9]</span>
 
 <div align="center">⁂</div>
@@ -979,30 +991,30 @@ what do you think?
 
 how would you organize this?
 
-This is a rich pedagogical problem. The data I just found unlocks some important architectural options for the course — let me go through everything properly.
+This is a rich pedagogical problem. The data I just found unlocks some important architectural options for the course - let me go through everything properly.
 
 ## What You Learned From the Previous Course
 
-The core problem was a **learning experience shaped like a waterfall**: long setup → sudden autonomous burst → nothing to do. The fixes are structural, not cosmetic. The key principle for the redesign: **every module must end with something running that a student built, not something the agent built while they watched.**
+The core problem was a **learning experience shaped like a waterfall**: long setup -> sudden autonomous burst -> nothing to do. The fixes are structural, not cosmetic. The key principle for the redesign: **every module must end with something running that a student built, not something the agent built while they watched.**
 
 Three concrete mistakes to explicitly design against this time:
 
-- Setup cost front-loaded → split across modules, each piece immediately demonstrated
-- No sandbox → students became "accept monkeys", learned wrong habits, didn't see the tool's actual power
-- Big final run = passive audience → the delegation idea you proposed is exactly the right fix
+- Setup cost front-loaded -> split across modules, each piece immediately demonstrated
+- No sandbox -> students became "accept monkeys", learned wrong habits, didn't see the tool's actual power
+- Big final run = passive audience -> the delegation idea you proposed is exactly the right fix
 
 
-## IntelliJ MCP Server — Confirmed, Auto-Configure Supported
+## IntelliJ MCP Server - Confirmed, Auto-Configure Supported
 
 Since IntelliJ IDEA 2025.2, the IDE ships a **built-in MCP server** with one-click auto-configuration for external clients [^7_1]:
 
-> Settings → MCP Server → Enable → Clients Auto-Configuration → **Auto-Configure** for Codex / Claude Code / Cursor
+> Settings -> MCP Server -> Enable -> Clients Auto-Configuration -> **Auto-Configure** for Codex / Claude Code / Cursor
 
-This will automatically patch the correct `mcp_config.json` for each CLI tool. No manual JSON editing needed [^7_1]. The MCP server exposes tools for code navigation, refactoring, build execution, run configurations, and symbol search using the IDE's actual index [^7_2]. For a Java Spring AI backend this is genuinely powerful — the agent can do project-wide renames, see compilation errors in real time, and trigger Gradle/Maven builds as proper tool calls.
+This will automatically patch the correct `mcp_config.json` for each CLI tool. No manual JSON editing needed [^7_1]. The MCP server exposes tools for code navigation, refactoring, build execution, run configurations, and symbol search using the IDE's actual index [^7_2]. For a Java Spring AI backend this is genuinely powerful - the agent can do project-wide renames, see compilation errors in real time, and trigger Gradle/Maven builds as proper tool calls.
 
-This is absolutely worth showing — it's one of the strongest demonstrations of why MCP matters, because it takes a closed IDE and makes it transparent to any external agent. A 15-minute demo block showing Codex refactoring a Java class through IntelliJ's own symbol index is more compelling than any slide about MCP.
+This is absolutely worth showing - it's one of the strongest demonstrations of why MCP matters, because it takes a closed IDE and makes it transparent to any external agent. A 15-minute demo block showing Codex refactoring a Java class through IntelliJ's own symbol index is more compelling than any slide about MCP.
 
-## Codex Cloud Agents — What They Actually Are
+## Codex Cloud Agents - What They Actually Are
 
 This matters for your delegation idea. The four surfaces share the same model brain but work differently [^7_3]:
 
@@ -1014,30 +1026,30 @@ This matters for your delegation idea. The four surfaces share the same model br
 | Cloud Tasks | OpenAI infra | ⚠️ External MCPs only (no localhost) | ✅ | PR on GitHub + `codex apply <ID>` |
 | IDE Extension | Their machine | ✅ Shared with CLI | ✅ Delegates to CLI | Inline in editor |
 
-Cloud tasks run on OpenAI's managed environment [^7_3]. This has a critical implication for your use case: **internal bank MCPs (like their IntelliJ MCP server) are not reachable from cloud tasks**. But for the course specifically — where participants have public internet access, ChatGPT Plus subscriptions, and the demo app repo is on GitHub — cloud tasks work perfectly. The agent creates a PR with the completed work, and they `codex apply <TASK_ID>` to pull it in locally [^7_3].
+Cloud tasks run on OpenAI's managed environment [^7_3]. This has a critical implication for your use case: **internal bank MCPs (like their IntelliJ MCP server) are not reachable from cloud tasks**. But for the course specifically - where participants have public internet access, ChatGPT Plus subscriptions, and the demo app repo is on GitHub - cloud tasks work perfectly. The agent creates a PR with the completed work, and they `codex apply <TASK_ID>` to pull it in locally [^7_3].
 
 The other important piece: Codex itself can be **exposed as an MCP server** that an Agents SDK orchestrator calls [^7_4]. The pattern looks like this:
 
 ```python
-# Designer agent (e.g. GPT-5.5) → spawns → Developer agent (Codex as MCP)
+# Designer agent (e.g. GPT-5.5) -> spawns -> Developer agent (Codex as MCP)
 async with MCPServerStdio("codex", {"command": "npx", "args": ["-y", "codex", "mcp-server"]}) as codex_mcp:
     developer = Agent("Developer", mcp_servers=[codex_mcp], ...)
     designer = Agent("Designer", model="gpt-5.5", handoffs=[developer])
     await Runner.run(designer, "Build the Spring API for user management")
 ```
 
-This is the most advanced pattern worth showing — not just "Codex runs sub-agents" but "Codex is a tool that a meta-orchestrator calls, with sandbox and approval policy set per-call" [^7_4].
+This is the most advanced pattern worth showing - not just "Codex runs sub-agents" but "Codex is a tool that a meta-orchestrator calls, with sandbox and approval policy set per-call" [^7_4].
 
-## Course Structure — Redesigned
+## Course Structure - Redesigned
 
 Based on everything discussed in this whole conversation, here's how I'd organize it:
 
-### Day 1 — Ground Floor, Running Immediately
+### Day 1 - Ground Floor, Running Immediately
 
 **Module 1: Environment + First Run (2h)**
 
 - WezTerm setup, `sandbox = "elevated"` (Windows) or Landlock (WSL2) configured **before the first prompt**
-- First exercise: `codex "explain this Java file"` with `--approval-mode suggest` — they see the tool work, understand the approval loop, and the sandbox is already on
+- First exercise: `codex "explain this Java file"` with `--approval-mode suggest` - they see the tool work, understand the approval loop, and the sandbox is already on
 - End result: working Codex with sandbox, they've seen one complete interaction
 
 **Module 2: AGENTS.md + Skills (2h)**
@@ -1046,15 +1058,15 @@ Based on everything discussed in this whole conversation, here's how I'd organiz
 - Create one custom skill (e.g., `java-test-writer`) and immediately run it on one class
 - End result: a skill that generates a JUnit test. They wrote the skill, they ran it, they see a test file appear
 
-**Module 3: MCP — IntelliJ Server (1.5h)**
+**Module 3: MCP - IntelliJ Server (1.5h)**
 
 - Auto-configure IntelliJ MCP for Codex live in the room
-- Exercise: `codex "rename the UserService class to CustomerService project-wide"` — runs through IntelliJ's symbol index, not grep
+- Exercise: `codex "rename the UserService class to CustomerService project-wide"` - runs through IntelliJ's symbol index, not grep
 - Brief contrast: what the same task looks like without MCP (dumber, slower, misses some references)
 - End result: they've seen the difference MCP makes on a real Java project task
 
 
-### Day 2 — Agent Orchestration + The Delegation Model
+### Day 2 - Agent Orchestration + The Delegation Model
 
 **Module 4: Sub-agents + Multi-agent patterns (2h)**
 
@@ -1063,19 +1075,18 @@ Based on everything discussed in this whole conversation, here's how I'd organiz
 - Important: configure `--approval-mode never` inside sandbox **right now** so they experience what autonomous actually feels like without the accept-spam you had last time
 - End result: they've orchestrated a parallel agent job and reviewed results
 
-**Module 5: Planning Phase — PRD + ADR + System Design (2h, but different from last time)**
-The key insight from last time: **don't do all planning first then code**. Instead:
+**Module 5: Planning Phase - PRD + ADR + System Design (2h, but different from last time)** The key insight from last time: **don't do all planning first then code**. Instead:
 
-- Write PRD together (~30 min) — but write it as AGENTS.md instructions, not a separate document
-- Create the agent harness (specialized agents: `architect`, `spring-coder`, `react-coder`, `test-writer`, `reviewer`) — (~45 min)
+- Write PRD together (~30 min) - but write it as AGENTS.md instructions, not a separate document
+- Create the agent harness (specialized agents: `architect`, `spring-coder`, `react-coder`, `test-writer`, `reviewer`) - (~45 min)
 - **Immediately test each agent on a micro-task** so they see each one work before wiring them together
 - End result: a configured, tested harness they understand because they've seen each piece individually
 
-**Module 6: Launch the Big Job → Switch Context (the clever part)**
+**Module 6: Launch the Big Job -> Switch Context (the clever part)**
 
 This is your best pedagogical move. Structure it like this:
 
-1. **Launch the full app build** as a Codex Cloud Task (or local with `--detach` + Codex Desktop notification) — sandbox on, `approval-mode never`, agents fully delegated
+1. **Launch the full app build** as a Codex Cloud Task (or local with `--detach` + Codex Desktop notification) - sandbox on, `approval-mode never`, agents fully delegated
 2. **The moment it starts running**, switch the room's attention entirely: "The agents are working. We don't watch them. Let's talk about what happens in a real bank environment"
 3. **During the run** cover: cloud vs on-premises CLI agents, GitHub Actions integration with `codex exec`, CICD patterns, how to structure agent feedback channels, how to prevent prompt injection in AGENTS.md
 
@@ -1084,22 +1095,22 @@ When Codex Desktop or WezTerm notifies that an agent needs input or has finished
 4. **Return to the running job together**: review the PR/diff, discuss what went well, identify what failed or was wrong
 5. **Module 7 becomes live debugging**: how to improve the harness, write better AGENTS.md constraints, fix flaky tests, add validation assertions that sub-agents must run before reporting done
 
-This mirrors real professional use — the skill being taught is **not watching the agent, it's designing the system so you don't have to**.
+This mirrors real professional use - the skill being taught is **not watching the agent, it's designing the system so you don't have to**.
 
-### Day 3 — Alternatives, Real Work, Hardening
+### Day 3 - Alternatives, Real Work, Hardening
 
 **Module 8: Claude Code as contrast (1.5h, OpenRouter)**
 
 - Quick setup with OpenRouter, show bash-first philosophy vs Codex RPC tools
-- Same task from Module 4 run with Claude Code — discuss the token burn difference, why bash-first can be more flexible but less controlled
+- Same task from Module 4 run with Claude Code - discuss the token burn difference, why bash-first can be more flexible but less controlled
 - Show Claude Code's VM sandbox as conceptual contrast to Codex Landlock
 - No full project, just the contrast exercise
 
 **Module 9: Self-hosted model path (1h)**
 
 - Configure Codex CLI profile pointing at Ollama (or OpenRouter GLM 5)
-- Run the Module 2 exercise again with GLM 5 — let them feel the quality gap vs the current Codex/Claude Code baseline.
-- Frame it as: "this is what your actual work setup will look like, and this is the quality you're working with — here's how to compensate with better AGENTS.md"
+- Run the Module 2 exercise again with GLM 5 - let them feel the quality gap vs the current Codex/Claude Code baseline.
+- Frame it as: "this is what your actual work setup will look like, and this is the quality you're working with - here's how to compensate with better AGENTS.md"
 
 **Module 10: Validation, Testing, Anti-patterns (1.5h)**
 
@@ -1111,7 +1122,7 @@ This mirrors real professional use — the skill being taught is **not watching 
 
 ## On the "Human in the Loop" Philosophy
 
-Your intuition that **Claude Code suits full autonomy better while Codex suits human-in-the-loop better** is well-supported [^7_5][^7_6]. Claude burns 4× more tokens than Codex on identical tasks [^7_5] — which for a professional autonomous run is acceptable, but for a course where students are learning to steer, it's expensive and creates passivity. Codex's tighter approval model and explicit sub-agent orchestration makes it **better for teaching**, even if Claude's unconstrained autonomy sometimes produces a better single-shot result [^7_6].
+Your intuition that **Claude Code suits full autonomy better while Codex suits human-in-the-loop better** is well-supported [^7_5][^7_6]. Claude burns 4× more tokens than Codex on identical tasks [^7_5] - which for a professional autonomous run is acceptable, but for a course where students are learning to steer, it's expensive and creates passivity. Codex's tighter approval model and explicit sub-agent orchestration makes it **better for teaching**, even if Claude's unconstrained autonomy sometimes produces a better single-shot result [^7_6].
 
 The concrete rule worth teaching: **for learning, more human checkpoints = more learning. For production runs, fewer checkpoints = more throughput. Design your harness for production, but run it in supervised mode during development.** The sandbox plus `approval-mode` spectrum gives them the knob to tune this, which is itself the most important thing they can leave the course understanding.
 <span style="display:none">[^7_10][^7_11][^7_12][^7_13][^7_14][^7_15][^7_7][^7_8][^7_9]</span>
@@ -1147,4 +1158,3 @@ The concrete rule worth teaching: **for learning, more human checkpoints = more 
 [^7_14]: https://itecsonline.com/post/claude-code-codex-cli-ai-agents-beyond-coding-2026
 
 [^7_15]: https://github.com/howardpen9/coding-cli-tracker/issues/9
-

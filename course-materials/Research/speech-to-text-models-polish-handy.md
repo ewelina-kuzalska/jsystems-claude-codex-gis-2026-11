@@ -1,7 +1,7 @@
 ---
 title: Polish and Polish-accented English dictation in Handy
 date: 2026-10-20
-reviewed: 2026-10-22
+reviewed: 2026-11-04
 tags:
   - ai/speech-to-text
   - polish-nlp
@@ -49,3 +49,19 @@ Copyable [transcription and cleanup prompts](../Prompt%20examples/Handy.computer
 Use the same microphone and saved synthetic recordings for each model: natural Polish with diacritics, English spoken in your own accent, developer names and numbers, and a separate translation sample. Include negations and one mixed-language sample. Write a reference transcript first; score word errors separately from punctuation and translation fidelity. Record the app version, model, quantization, accelerator, audio duration and processing time. Repeat several samples before choosing a model.
 
 Catalog rankings and a successful sample do not establish zero hallucination risk or a universal winner for a particular speaker.
+
+## Handy versus ChatGPT/Codex voice (4 November 2026)
+
+Use Handy to prepare text in any application; use native Voice to converse with an agent. The detailed [Codex and desktop comparison](codex-voice-queue-enterprise-chat-credits-2026-10-30.md#3-voice-dictation-and-local-transcription) separates `/voice`, desktop **Start voice chat**, composer **Dictate** and OS/IDE dictation. None of the local observations above is a head-to-head benchmark against native Voice.
+
+### Local does not mean nothing is retained
+
+Ordinary Handy recognition runs on the device. The official privacy policy says audio/transcripts can remain in local history, and saved entries can remain until deleted. Review history limits and recording retention on shared machines; uninstalling the application may leave its data directory. Updates and model downloads make network requests without sending ordinary transcription content. [Handy privacy policy](https://handy.computer/privacy).
+
+Optional cloud cleanup sends the transcript and chosen prompt to the configured provider. Keep it disabled for an entirely on-device speech-to-text step, or deliberately use an approved local endpoint. After pasting, review and submit the prompt yourself: the destination agent's own data handling then applies. [Handy privacy policy](https://handy.computer/privacy).
+
+### Choose the installed model, not just a brand
+
+The current README lists multilingual Whisper choices and Parakeet V3, while the model manager retains Canary v2 migration/discovery support. The downloadable catalog and local model metadata decide which language and translation controls are available in a particular installation. The existing Canary recommendation is based on the dated local trial, not a promise that every new install has the same model or hardware path. [Handy README](https://github.com/cjpais/Handy#how-it-works), [model catalog and discovery](https://github.com/cjpais/Handy/blob/main/src-tauri/src/managers/model.rs), [model capability handling](https://github.com/cjpais/Handy/blob/main/src-tauri/src/managers/model_capabilities.rs).
+
+For a short comparison, use the same synthetic Polish text, then a second prompt containing English identifiers and a negation. Compare raw transcription, cleanup changes, recognition/processing delay and time spent correcting. Check that Polish stays Polish, English identifiers stay exact, and a phrase such as "nie usuwaj plików" keeps its negation. Language support and catalog ratings do not guarantee perfect mixed-language recognition.
