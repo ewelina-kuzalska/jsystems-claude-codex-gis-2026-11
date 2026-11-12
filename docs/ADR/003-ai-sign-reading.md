@@ -459,4 +459,4 @@ Uzupełnienie z ADR-006 D-604: zapisy dla wszystkich trzech modeli (Luna Decisio
 | Przyjęty kształt obrazu | `state`: `{type: image_url, image_url: {url: data:image/png;base64,…}}` po `JEV_RESIZE_V1` | `state`: data URL JPEG, oryginalne bajty | `messages[0].content[1]`: `image_url` |
 | Data i liczba żądań pomiaru | 2026-11-12: 2 × 200, 2 × 400 (rozmiar) | 2026-11-12: 2 × 200 | 2026-11-12: 2 × 200 |
 
-Pomiary z pełnego uruchomienia C4 (T28) uzupełniają ADR-006 §5.
+**Pełne uruchomienie C4 (T28, 2026-11-12):** mediana czasu kroku 1: Jev 0,24 s, Luna Decisions 0,56 s; krok 2 (Luna LLM) 4,9 s. Koszt na żądanie: krok 1 ok. 0,00004 USD, krok 2 0,00015 USD (mediana). Kształt obrazu potwierdzony w obu krokach. Koszt całego uruchomienia 0,0005–0,0011 USD przy limicie 0,50 USD. Szczegóły i accuracy per model: ADR-006 §5.

@@ -80,6 +80,17 @@
 - 401 bez klucza: `{"error":{"message":"No cookie auth credentials found","code":401}}`.
 - Na wycinku trudnym (etykieta `unreadable`) Jev odpowiedział `50` z p = 0,84, Luna Decisions `unreadable`, a Luna LLM `30` z pewnością 0,38. Jev może więc dawać pewne odpowiedzi na nieczytelnych wycinkach; porównanie modeli w T28.
 
+### Pomiary z pełnego uruchomienia C4 (T28, 2026-11-12)
+
+Dwa uruchomienia `map-qa run --with-signs --yes` na pełnym snapshocie, ta sama próbka 12 wycinków (`floor(25/2)`), świeży cache. Szczegóły: [`reports/map-qa/qa/M2/`](../../reports/map-qa/qa/M2/README.md).
+
+| Model kroku 1 | Żądania krok 1 / krok 2 | Mediana czasu kroku 1 (s) | Mediana kosztu kroku 1 (USD) | Koszt uruchomienia (USD) | Zgodność kroku 1 (ostateczne) | Zgodność wszystkich ostatecznych | Kolejka ręczna |
+|---|---|---|---|---|---|---|---|
+| Jev 1.14 | 12 / 0 | 0,24 | 0,000040 | 0,000488 | 12 / 12 | 12 / 12 | 0 |
+| Luna Decisions | 12 / 4 | 0,56 | 0,000040 | 0,001141 | 8 / 8 | 10 / 10 | 2 (`below_threshold`) |
+
+Luna LLM (krok 2, 4 żądania): mediana 4,9 s, mediana kosztu 0,00015 USD (maks. 0,00029). Na tej próbce Jev rozstrzygnął wszystko w kroku 1 bez eskalacji; nie uruchamia to review triggera „Jev gorszy od Luny Decisions”. Próbka 12 wycinków jest za mała do zmiany domyślnego modelu; kolejne uruchomienia rozszerzają ją przez cache.
+
 ## 6. Review trigger
 - Accuracy kroku 2 nie lepsze niż kroku 1 na eskalowanych wycinkach → rozważyć model innej rodziny.
 - Jev zacznie przyjmować obrazy < 280 px → uprościć D-603.
