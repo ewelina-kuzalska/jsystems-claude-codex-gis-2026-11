@@ -91,6 +91,7 @@ class RequestBudget:
     cost_unknown: bool = False
     stopped_reason: str = "none"
     stopped_at_photo_id: str = ""
+    last_error: str = ""
 
     def __post_init__(self) -> None:
         if not 1 <= self.limit <= 25:
