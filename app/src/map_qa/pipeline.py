@@ -371,6 +371,11 @@ def run(
         echo(f"C4: nie uruchomiono — {c4.block.get('reason', '')}")
 
     label_uncertain(c1 + c2.candidates, rechecked)
+    # AC-04: każde zadanie z drogą ze snapshotu niesie jej pełne, niezmienione tagi.
+    tags_by_id = dict(zip(osm["osm_id"].astype(int), osm["tags"], strict=True))
+    for cand in c3:
+        if cand.osm_id in tags_by_id and not cand.osm_raw:
+            cand.osm_raw = tags_by_id[cand.osm_id]
     tasks = build_tasks(c1 + c2.candidates + c3 + c4.candidates)
     counts = count_by_check(tasks)
     not_comparable = c2.not_comparable + c4.not_comparable

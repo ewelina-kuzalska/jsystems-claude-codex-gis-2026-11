@@ -83,3 +83,18 @@ def test_default_input_missing_hint(tmp_path, monkeypatch):  # ADR-005 D-501
     assert res.exit_code == 2
     assert "uruchom z korzenia repozytorium albo podaj --input" in res.output
     assert not (tmp_path / "reports").exists()
+
+
+def test_every_task_with_osm_id_exports_full_tags(snap, tmp_path):  # AC-04
+    import pyarrow.parquet as pq
+
+    t = pq.read_table(snap / "osm_roads.parquet", columns=["osm_id", "tags"])
+    tags = dict(zip(t["osm_id"].to_pylist(), t["tags"].to_pylist(), strict=True))
+    result = run(
+        RunConfig(input_dir=snap, output_dir=tmp_path / "o"), started=STARTED, echo=lambda s: None
+    )
+    feats = json.loads((result.run_dir / "tasks.geojson").read_text(encoding="utf-8"))["features"]
+    with_osm = [f["properties"] for f in feats if f["properties"]["osm_id"] in tags]
+    assert with_osm and any(p["check"] == "C3" for p in with_osm)
+    for p in with_osm:
+        assert p["osm_raw"] == tags[p["osm_id"]], (p["check"], p["task_id"])
