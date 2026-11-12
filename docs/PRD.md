@@ -118,7 +118,7 @@ This is slow and not repeatable. Two common mistakes follow from it. A differenc
 - **AC-15:** Every discrepancy candidate shows both raw values, both normalized values, the OSM way ID, the Overture segment ID and the OSM extract date and Overture release. The two dates are shown because sources of different ages can legitimately differ.
 
 ### C3 — Uncertain photo-to-road links
-- **AC-16:** A photo link is "uncertain" when it has at least one of these flags: `ambiguous_candidates`, `camera_against_way_direction`, `panorama_heading_ambiguous`, `poor_heading_alignment`, `missing_heading`, `service_way`, `boundary_crossing`, `overture_spatial_only`, `no_osm_within_25m`. The report shows the count per flag and the count of photos with at least one flag.
+- **AC-16:** A photo link is "uncertain" when it has at least one of these flags: `ambiguous_candidates`, `camera_against_way_direction`, `panorama_heading_ambiguous`, `poor_heading_alignment`, `missing_heading`, `service_way`, `boundary_crossing`, `overture_spatial_only`, `no_osm_within_25m`, or one of the flags computed by the tool and defined in ADR-002 §3.3 (`link_recheck_mismatch`, `restricted_access`, `grade_separated_nearby`). Sign matches also carry the flags from `signs/nearest_osm.csv` (including `outside_standard_25m`). The report shows the count per flag, with source-file flags and tool-computed flags in separate columns, and the count of photos with at least one flag.
 - **AC-17:** All distances shown in the report are computed with both layers in EPSG:2180 and shown in metres, rounded to 0.1 m.
 - **AC-18:** A heading of `0` is treated as north. An empty heading is treated as missing and is never replaced by `0`.
 - **AC-19:** Any C1, C2 or C4 candidate whose photo link is uncertain is labeled "uncertain link" in the report and the export, and lists the flags.
@@ -126,7 +126,7 @@ This is slow and not repeatable. Two common mistakes follow from it. A differenc
 ### C4 — Speed-limit sign reading
 - **AC-20:** C4 runs only when the user explicitly enables it and confirms the planned number of requests. Without both, the system makes zero AI requests in either tier and C4 is reported as "not run".
 - **AC-21:** Both AI tiers receive only the sign crop image and the same fixed question. Neither ever receives map attributes, Mapillary detection values, reference labels, coordinates, road identifiers or the other tier's answer.
-- **AC-22:** Each AI answer is one of: a speed value in km/h (round B-33 speed-limit sign), `none` (no B-33 sign, or a zone/end-of-limit sign), or `unreadable`. Each answer carries a probability (tier 1) or stated confidence (tier 2) between 0 and 1. The system records and shows every answer and its probability, including answers that were escalated.
+- **AC-22:** Each AI answer is one of: a speed value in km/h (round B-33 speed-limit sign), `none` (no B-33 sign, or a zone/end-of-limit sign), or `unreadable`. Tier 1 may additionally answer `other` (a B-33 sign whose number is outside its fixed option list); `other` is a valid answer, is never final and always escalates to tier 2, which returns the exact value (ADR-003 D-301). Each answer carries a probability (tier 1) or stated confidence (tier 2) between 0 and 1. The system records and shows every answer and its probability, including answers that were escalated.
 - **AC-22a:** A single confidence threshold is set before the run. It is shown in the CLI confirmation and in the report header, and it cannot change during a run. The default is 0.7.
 - **AC-22b:** A tier-1 answer is final (`resolved_by = decision_model`) only when it is a value or `none` and its probability is at or above the threshold. In every other case the crop is escalated to tier 2.
 - **AC-22c:** Tier 2 is a general-purpose multimodal LLM run with a medium reasoning level. A tier-2 answer is final (`resolved_by = general_llm`) only when it is a value or `none` and its confidence is at or above the threshold.
@@ -137,7 +137,7 @@ This is slow and not repeatable. Two common mistakes follow from it. A differenc
 - **AC-25:** Each request times out after 40 seconds. A timeout counts as a failed request.
 - **AC-26:** Running the tool again on the same crops returns cached results for both tiers and makes zero new requests.
 - **AC-27:** A sign mismatch candidate is created only for a crop with a final AI answer whose numeric value differs from the normalized OSM speed limit of the candidate road. The candidate shows which tier resolved it, the Mapillary detection value and the raw OSM speed tags (including directional and conditional ones).
-- **AC-28:** The report shows reading accuracy against the reference sign labels as "correct / evaluated", separately for tier-1 final answers, tier-2 final answers and all AI-final answers combined. It also shows the size of the manual review queue per reason code. Crops in the manual review queue are not counted as correct or wrong. Reference labels are used only for this evaluation and never as model input.
+- **AC-28:** The report shows reading accuracy against the reference sign labels as "correct / evaluated" (labelled in the report as agreement with the working reference, because the reference labels are readings by two AI models, not ground truth), separately for tier-1 final answers, tier-2 final answers and all AI-final answers combined. It also shows the size of the manual review queue per reason code. Crops in the manual review queue are not counted as correct or wrong. Reference labels are used only for this evaluation and never as model input.
 - **AC-28a:** The manual review queue is a separate section of the HTML and Markdown reports and a separate task type (`C4-manual`) in the GeoJSON and CSV exports. Each item shows the crop, the full photo link with attribution, both AI answers with probabilities (when available) and the reason code. It does not show the reference label.
 - **AC-29:** The report states that the camera heading is not the direction of travel and that the nearest road does not prove where the sign applies.
 
@@ -146,7 +146,7 @@ This is slow and not repeatable. Two common mistakes follow from it. A differenc
 - **AC-31:** The HTML report opens from the local disk without a server. It uses relative image paths, does not embed images as base64, and escapes all text that comes from source data.
 - **AC-32:** Every displayed photo shows its author, license and a link to the source page. The report and exports include the attribution "© OpenStreetMap contributors", the Overture Maps Foundation attribution and the photo license (CC BY-SA 4.0).
 - **AC-33:** The GeoJSON export uses WGS84 longitude/latitude coordinates. Each task has: a stable task ID, the check type (C1, C2, C3, C4 or C4-manual), the resolving tier for C4 tasks, the OSM way ID, the Overture segment ID (when available), the photo ID and link, raw and normalized source values, the uncertainty flags and a short problem description.
-- **AC-34:** The CSV export has one row per task with the same task IDs and fields as the GeoJSON, plus longitude and latitude columns. It is UTF-8 encoded.
+- **AC-34:** The CSV export has one row per task with the same task IDs and fields as the GeoJSON, plus longitude and latitude columns. It is UTF-8 encoded with a byte order mark (`utf-8-sig`), so that Excel shows Polish characters correctly (ADR-004 D-403).
 - **AC-35:** Running the tool twice on the same snapshot, with the same cache, produces exports with identical task IDs and content.
 - **AC-36:** The report never states that the map is wrong. Each candidate is described as "needs review" with the evidence and the reasons it may be a false alarm.
 
@@ -181,7 +181,7 @@ This is slow and not repeatable. Two common mistakes follow from it. A differenc
 - No company or private data. Only the provided public snapshot.
 
 ### Functional
-- Area: Kraków and the surroundings, bbox 19.80–20.15 E, 49.95–50.15 N.
+- Area: Kraków and the surroundings, bbox 19.80–20.15 E, 49.95–50.15 N. Exception: the sign sample (`signs/`) also contains crops from other Polish cities (24 of 119, OSM context fetched from the OSM API). These crops are read and evaluated, but never compared with the map; they are listed as "not comparable / `outside_snapshot`" (ADR-002 §3.4).
 - Input sizes in the provided snapshot: 99,768 OSM roads, 85,405 Overture segments, 561 photos with 561 link rows (558 with an OSM candidate), 1,730 Mapillary speed-limit features, 119 sign crops with reference labels.
 - Metric distances only in EPSG:2180, after transforming both layers. OSM is EPSG:4326 and Overture is OGC:CRS84, both longitude/latitude.
 - Model limit: at most 25 requests per run including failures, 40-second timeout, no automatic retries, cache by image hash.
@@ -314,7 +314,7 @@ flowchart TD
   - `model_unavailable` / `budget_exhausted` / `not run`: shown as statuses, never as model answers.
 - **Uncertainty:** answers below the threshold are never used as final, but they are never hidden either. The probability is always shown next to the answer.
 - **Mandatory notices in the report:** the model reading is not ground truth; the camera heading is not the travel direction; the nearest road does not prove the sign applies to it; a difference between sources is not proof of a map error.
-- **Off-topic or unexpected model output:** an answer outside the allowed set is recorded as an invalid response. It counts as a failed request, so the paid loop stops (AC-24).
+- **Off-topic or unexpected model output:** an answer outside the allowed set (value, `none`, `unreadable`, and `other` for tier 1 only) is recorded as an invalid response. It counts as a failed request, so the paid loop stops (AC-24).
 - **Language:** the report is in Polish. The model question and answer format are fixed and are not shown to the end user beyond the answer and the probability.
 
 ---
