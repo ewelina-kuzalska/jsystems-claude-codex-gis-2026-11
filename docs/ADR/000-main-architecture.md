@@ -29,9 +29,10 @@ ADR-y:
 | [`003-ai-sign-reading.md`](003-ai-sign-reading.md) | Kontrakt modeli, eskalacja, budżet, cache, C4 |
 | [`004-report-export.md`](004-report-export.md) | Raport Markdown/HTML, GeoJSON, CSV, atrybucje |
 
-**Warunki wstępne, których dziś brakuje:**
-- `reports/map-qa/profile.md` (krok M2) nie istnieje. ADR opiera się na `course-materials/exercise-data/map-qa/README.md`, `sources.json` i nagłówkach CSV. Pola oznaczone w ADR jako „do potwierdzenia w profilu” trzeba sprawdzić w profilu przed etapem, który ich używa.
-- Na VM brakuje `uv` w PATH. Instalacja `uv` jest pierwszym krokiem implementacji.
+**Warunki wstępne:**
+- Profil danych (krok M2) jest w [`reports/map-qa/profile.md`](../../reports/map-qa/profile.md) (2026-11-12). Punkty, które ADR oznaczał jako „do potwierdzenia w profilu”, rozstrzygnięto w ADR-001–003 (aktualizacja 2026-11-12). Tabela rozstrzygnięć jest w §6 profilu.
+- `uv` instalujemy przez `winget install --id astral-sh.uv -e` (0.13.7). Po instalacji trzeba uruchomić nową powłokę, bo zmienia się PATH.
+- Na Windows przy przekierowaniu wyjścia Pythona do pliku ustawiamy `PYTHONUTF8=1`. Bez tego tabele DuckDB dają `UnicodeEncodeError` w cp1250.
 
 ---
 
@@ -130,10 +131,10 @@ Kierunek zależności jest jeden: `cli` → `pipeline` → (moduły domenowe) �
 Opis koncepcyjny. Typy implementujemy jako dataclasses lub tabele pandas. Wszystkie modele żyją w pamięci przez jedno uruchomienie, chyba że zaznaczono inaczej.
 
 - **Snapshot:** ścieżka wejść; `osm_extract_date`, `overture_release`, `created_at` z `sources.json`; lista plików z oczekiwanym SHA-256 i rozmiarem; liczności wierszy.
-- **OsmRoad:** `osm_id` (int64), `highway`, geometria LineString (4326 i 2180), `tags_raw` (pełny JSON jako tekst, niezmieniony), `node_ids`, `boundary_crossing` (bool), `oneway_raw`.
+- **OsmRoad:** `osm_id` (int64), `highway`, geometria LineString (4326 i 2180), `tags_raw` (pełny JSON jako tekst, niezmieniony; w pliku to kolumna `tags`), `node_ids`, `boundary_crossing` (bool), `oneway_raw`.
 - **SpeedValue (OSM):** `osm_id`, `tag_key` (`maxspeed`, `maxspeed:forward`, `maxspeed:backward`, `maxspeed:conditional` itd.), `raw` (tekst), `value_kmh` (float lub brak), `status` (`numeric` | `not_numeric` | `conditional`), `reason` (`zone`, `none`, `signals`, `multi_value`, `unparsable`, `conditional`), `direction` (`both` | `forward` | `backward`).
 - **OvertureRule:** `segment_id` (GERS `id`), `rule_kind` (`speed` | `surface`), `rule_index` (pozycja na liście), `raw_json` (pełna reguła), `value_kmh` lub `surface_raw`, `unit_raw`, `when_raw` (JSON lub brak), `heading` (z `when`, jeśli jest), `between_start`, `between_end`, `whole_segment` (bool), `unconditional` (bool).
-- **OvertureSource:** `segment_id`, `source_index`, `dataset`, `record_id` (np. `w123@4`), `osm_way_id` (int, wyprowadzony z `record_id`, jeśli zaczyna się od `w`).
+- **OvertureSource:** `segment_id`, `source_index`, `dataset`, `record_id` (np. `w123@4`), `osm_way_id` (int, wyprowadzony z `record_id`, jeśli zaczyna się od `w`), `source_between_start`, `source_between_end`, `source_whole_segment` (bool; ADR-001 §3.3).
 - **PhotoLink:** wiersz `photo_road_links.csv` (`photo_id`, `osm_way_id`, `overture_id`, `distance_m`, `way_bearing`, `bearing_diff`, `directed_bearing_diff`, `overture_distance_m`, `osm_candidate_count`, `match_method`, `candidate_flags` jako lista) plus pola kontroli: `recheck_distance_m`, `recheck_bearing`, `recheck_status` (`ok` | `mismatch` | `not_checked`).
 - **Photo:** wiersz `photos.csv`: identyfikator, współrzędne aparatu, `heading` (float lub brak, nigdy 0 zamiast braku), data, autor, licencja, URL źródła, hashe, `is_panorama`, ścieżka miniatury lokalnej lub brak.
 - **Candidate:** `check` (`C1`, `C2`, `C3`, `C4`, `C4-manual`), `reason_code`, identyfikatory (`osm_id`, `segment_id`, `photo_id`), wartości surowe i znormalizowane z obu stron, `distance_m`, `uncertain_link` (bool) i flagi, `comparable` (bool) i powód, `resolved_by` (tylko C4).
@@ -227,6 +228,8 @@ Databricks (`DATABRICKS_HOST`, `DATABRICKS_TOKEN`, identyfikator warehouse) nie 
 - (+) Pełna powtarzalność.
 - (+) Testy działają offline i bez sekretów.
 - (-) Brak świeżych danych (zgodnie z PRD).
+
+**Weryfikacja 2026-11-12:** ręczna kontrola zgodności liczności `workspace.map_qa` z plikami lokalnymi daje 8/8 zgodnych miar ([profil §8](../../reports/map-qa/profile.md)). Na Windows w Git Bash wywołanie `databricks api post /api/2.0/...` wymaga `MSYS_NO_PATHCONV=1`.
 
 **Review trigger:** PRD dodaje odświeżanie danych albo nowe obszary.
 

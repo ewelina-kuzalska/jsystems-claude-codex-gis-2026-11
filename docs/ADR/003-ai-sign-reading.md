@@ -1,6 +1,7 @@
 # ADR-003: Odczyt znaku B-33 przez AI, eskalacja, budżet i cache (C4)
 
 **Data:** 2026-11-03
+**Aktualizacja:** 2026-11-12, ustalenia z profilu M2 ([`reports/map-qa/profile.md`](../../reports/map-qa/profile.md)): mapowanie etykiet po `sign_value`, brak metadanych w wycinkach, wszystkie wartości etykiet w opcjach kroku 1
 **Status:** Accepted
 **Relates to:** [`000-main-architecture.md`](000-main-architecture.md)
 
@@ -59,6 +60,7 @@ Pierwsze prawdziwe wywołania mają te fakty zmierzyć i zapisać w sekcji 9.
 - **Plik:** `signs/crops/<photo_id>.jpg`. Hash bajtów porównujemy z `crop_sha256` w `signs.csv`. Niezgodność albo brak pliku daje `request_outcome = not_sent`, `resolved_by = human_pending`, `manual_reason = model_unavailable`, a w szczegółach `crop_invalid`.
 - **Format:** tylko JPEG lub PNG (sprawdzane po sygnaturze bajtów).
 - **Metadane:** wycinek nie może zawierać metadanych lokalizacyjnych. Plik JPEG z segmentem APP1 (EXIF/XMP) albo PNG z chunkiem `eXIf` nie jest wysyłany: `not_sent / metadata_present`, wycinek trafia do kolejki ręcznej. Nie przetwarzamy obrazu ponownie, żeby nie dodawać zależności i nie zmieniać hashu.
+- **Stan danych (profil M2):** 119/119 wycinków to JPEG z hashem zgodnym z `crop_sha256` i bez segmentu APP1. W dostarczonej próbce kontrola nie blokuje żadnego wycinka. Testy fail-closed robimy na zmodyfikowanych kopiach w tmp.
 - **Wysyłane bajty:** obraz trafia do żądania jako data URL base64 (`data:image/jpeg;base64,…`) dokładnie z bajtów pliku.
 
 ### 3.3 Krok 1: model decyzyjny
@@ -163,8 +165,15 @@ Pierwsze prawdziwe wywołania mają te fakty zmierzyć i zapisać w sekcji 9.
 
 ### 3.9 Ewaluacja
 - `signs/labels.csv` czyta wyłącznie moduł `signs.evaluate`, po zakończeniu rozstrzygania. Żaden moduł wywołujący AI go nie importuje (TAC-003-04).
-- **Mapowanie etykiet:** `sign_value` liczbowe → liczba. Wiersz z `negative_type` → `none`. Dokładne kodowanie do potwierdzenia w profilu M2.
-- **Etykiety w mianowniku:** tylko `status = certain`. Etykiety `uncertain` raportujemy osobno, z liczebnością.
+- **Mapowanie etykiet** (kodowanie potwierdzone w profilu M2). Decyduje **wyłącznie `sign_value`**:
+  - liczba (w próbce 20–120) → ta liczba,
+  - `none` → `none`,
+  - `unreadable` → `unreadable`.
+  - Pole `negative_type` (`no_speed_sign`, `no_entry`, `zone_end`, `zone`, `weight`, `no_overtaking`, `cancelled_sign`, `false_positive_object`, `no_stopping`, `limit_end`, `unreadable`) służy tylko do opisu w raporcie. **Nie mapujemy po nim**, bo ma je też wiersz `unreadable`.
+  - Inna wartość `sign_value` wyklucza wiersz z ewaluacji z kodem `label_unparsable`, raportowanym z licznością.
+- **Etykiety w mianowniku:** tylko `status = certain`. Etykiety `uncertain` raportujemy osobno, z liczebnością. Profil M2: 115 `certain` (89 liczbowych, 25 `none`, 1 `unreadable`) i 4 `uncertain` (wszystkie `none`).
+- **Etykieta `unreadable`:** wynik AI ostateczny (liczba lub `none`) dla takiego wycinka liczymy jako błędny. Wycinek, który trafił do kolejki ręcznej, jest poza mianownikiem, jak każdy inny w kolejce.
+- Wszystkie liczbowe etykiety w próbce mieszczą się w opcjach kroku 1 (10–140 co 10). Opcja `other` nie powinna więc wystąpić jako poprawna odpowiedź.
 - **Metryki** (AC-28), wszystkie jako „poprawne / ocenione”:
   - (a) ostateczne wyniki kroku 1,
   - (b) ostateczne wyniki kroku 2,
@@ -277,7 +286,7 @@ Pierwsze prawdziwe wywołania mają te fakty zmierzyć i zapisać w sekcji 9.
 - (+) Gwarancja braku metadanych.
 - (-) Wycinek z EXIF trafia do kolejki ręcznej.
 
-**Review trigger:** profil M2 pokaże metadane w wycinkach.
+**Review trigger:** nowa próbka wycinków z metadanymi. Profil M2 z 2026-11-12: 0/119 z APP1.
 
 ### D-305: Cache tylko odpowiedzi poprawnych
 **Status:** Accepted
@@ -422,6 +431,7 @@ sequenceDiagram
 | Hash wycinka | Unit | Zmieniony bajt | `crop_invalid`, kolejka ręczna | Brak pliku |
 | Brak klucza | Integration | `--with-signs` bez zmiennej | Zero żądań, C1–C3 zapisane | Pusta zmienna traktowana jak brak |
 | Ewaluacja | Unit | Rozstrzygnięcia + fixture etykiet | Trzy metryki z licznikiem i mianownikiem, kolejka poza mianownikiem | Etykiety `uncertain` osobno |
+| Mapowanie etykiet | Unit | Prawdziwe wiersze `labels.csv`: liczba, `none` + `no_entry`, `unreadable` + `negative_type = unreadable` | 50 / `none` / `unreadable` (nie `none`) | Nieznane `sign_value` → `label_unparsable` |
 | Izolacja etykiet | Unit | Import modułów | `ai_client`, `signs.resolve` nie czytają `labels.csv` (test sprawdzający otwierane pliki) | — |
 | Stany końcowe | Unit | Dowolny przebieg | Suma czterech stanów = liczba wycinków w próbce | `not_run` przy odmowie potwierdzenia |
 

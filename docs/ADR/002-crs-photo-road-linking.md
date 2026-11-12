@@ -1,6 +1,7 @@
 # ADR-002: CRS, EPSG:2180 i kontrola dopasowań zdjęcie–droga (C3)
 
 **Data:** 2026-11-03
+**Aktualizacja:** 2026-11-12, ustalenia z profilu M2 ([`reports/map-qa/profile.md`](../../reports/map-qa/profile.md)): `heading_diff_deg` jest nieskierowany (0–90), flaga `outside_standard_25m`, separator flag `;`
 **Status:** Accepted
 **Relates to:** [`000-main-architecture.md`](000-main-architecture.md)
 
@@ -78,6 +79,7 @@ Dla każdego wiersza `photo_road_links.csv` z `osm_way_id`:
 
 ### 3.3 Flagi niepewności (C3)
 - **Flagi z pliku:** `ambiguous_candidates`, `camera_against_way_direction`, `panorama_heading_ambiguous`, `poor_heading_alignment`, `missing_heading`, `service_way`, `boundary_crossing`, `overture_spatial_only`, `no_osm_within_25m` (AC-16).
+  - W `candidate_flags` są rozdzielane znakiem `;`. Profil M2: wszystkie 9 flag występuje, a 146 z 561 zdjęć ma co najmniej jedną flagę z pliku.
 - **Flagi liczone przez nas:**
   - `link_recheck_mismatch` (punkt 3.2),
   - `restricted_access`: way z tagiem `access` w {`private`, `no`, `customers`, `delivery`, `permit`},
@@ -90,7 +92,8 @@ Dla każdego wiersza `photo_road_links.csv` z `osm_way_id`:
 
 ### 3.4 Wybór kierunku OSM dla znaku (C4)
 - **Źródło:** `signs/nearest_osm.csv` (`osm_way_id`, `maxspeed`, `maxspeed_forward`, `maxspeed_backward`, `maxspeed_conditional`, `oneway`, `match_flags`, `distance_m`, `heading_diff_deg`) i `signs/signs.csv` (`compass_angle`, współrzędne aparatu).
-- **Zakres `heading_diff_deg`** (0–90 czy 0–180) jest do potwierdzenia w profilu. Kierunek liczymy sami, metodą z punktu 3.2: `directed_diff` między `compass_angle` a styczną way.
+- **Zakres `heading_diff_deg`:** profil M2 pokazał 0,01–87,86°, więc wartość jest **nieskierowana (0–90)** i nie odróżnia kierunków. Kierunek liczymy sami, metodą z punktu 3.2: `directed_diff` między `compass_angle` a styczną way. `compass_angle` jest wypełniony we wszystkich 119 wierszach `signs.csv`.
+- **Dane do porównania:** 97 ze 119 najbliższych dróg ma `maxspeed`, tylko 2 mają tagi kierunkowe, a 9 ma `maxspeed_conditional`. 22 drogi bez wartości dadzą `osm_missing_speed` (ADR-003 §3.8).
 - **Way bez tagów kierunkowych:** porównujemy z `maxspeed` (`both`).
 - **Way z `maxspeed:forward` lub `maxspeed:backward`:**
   - `directed_diff` ≤ 45° → wartość `forward`,
@@ -98,7 +101,7 @@ Dla każdego wiersza `photo_road_links.csv` z `osm_way_id`:
   - wartość pośrednia albo brak `compass_angle` → „not comparable / direction_unknown” (zgodnie z otwartym pytaniem z PRD).
 - **Założenie:** aparat patrzący zgodnie z kierunkiem jazdy widzi znak dla tego kierunku. To heurystyka, więc raport zawiera wymagane zastrzeżenie (AC-29).
 - **`oneway`** nie zmienia znaczenia `forward`/`backward`, bo te zawsze odnoszą się do kolejności węzłów. `oneway = -1` jest tylko flagą kontekstu w kandydacie.
-- **Znaki z `match_flags`** niepustym dostają „uncertain link” z tymi flagami.
+- **Znaki z `match_flags`** niepustym dostają „uncertain link” z tymi flagami (rozdzielane `;`; 44 ze 119 wierszy). Lista flag w `nearest_osm.csv` jest szersza niż AC-16. Zawiera też **`outside_standard_25m`** (4 znaki: najbliższa droga dalej niż standardowe 25 m). Tę flagę przenosimy bez zmian, a raport i eksport C4 pokazują ją jak każdą inną flagę z pliku.
 
 ---
 
@@ -178,7 +181,7 @@ Dla każdego wiersza `photo_road_links.csv` z `osm_way_id`:
 ### D-204: Kierunek znaku z własnego `directed_diff`
 **Status:** Accepted
 **Data:** 2026-11-03
-**Context:** Zakres `heading_diff_deg` w `signs/nearest_osm.csv` jest niepotwierdzony. Wartość 0–90 nie pozwala odróżnić kierunków.
+**Context:** Profil M2 potwierdził, że `heading_diff_deg` w `signs/nearest_osm.csv` ma zakres 0–90. Taka wartość nie pozwala odróżnić kierunków.
 **Decision:** Liczymy `directed_diff` z `compass_angle` i stycznej way. Progi 45°/135°, strefa pośrednia daje `direction_unknown`.
 
 **Rejected alternatives:**
@@ -189,7 +192,7 @@ Dla każdego wiersza `photo_road_links.csv` z `osm_way_id`:
 - (+) Jawna reguła.
 - (-) Kierunek aparatu nie jest kierunkiem jazdy, co wymaga zastrzeżenia w raporcie.
 
-**Review trigger:** profil pokaże, że `heading_diff_deg` jest kierunkowy (0–180).
+**Review trigger:** nowa wersja `signs/nearest_osm.csv` z kierunkowym `heading_diff_deg` (0–180). Profil M2 z 2026-11-12 potwierdził 0–90.
 
 ---
 
@@ -256,6 +259,7 @@ sequenceDiagram
 | Heading 359 / 1 | Unit | heading 359, styczna 1° | `directed_diff` 2°, `undirected_diff` 2° | heading 0 to wartość, nie brak |
 | Odwrotna geometria | Unit | heading 90, styczna 270° | `directed_diff` 180°, `undirected_diff` 0° | `oneway = -1` nie zmienia wyniku |
 | Brak heading | Unit | Puste pole | `missing_heading`, brak różnic, rank +5 m | NaN z CSV nie staje się 0 |
+| Heading 0 na prawdziwym wierszu | Integration | `panoramax_646ecfdd-ab57-4a28-b411-fb112ced3c97` (`heading = 0.0`) | Heading = 0° (północ), różnice policzone | 15 pustych heading w pliku = 15 flag `missing_heading` |
 | Remis | Unit | Dwa way w identycznym dystansie | Wybór mniejszego dystansu, potem mniejszego `osm_id` | Rank w granicach 2 m |
 | Kontrola zgodna | Integration | 5 prawdziwych linków bez flag z fixture'a | `recheck_status = ok` | — |
 | Kontrola rozjazdu | Unit | Link z `distance_m` zmienionym o 1 m w kopii testowej | `link_recheck_mismatch` | 0,4 m nie daje flagi |

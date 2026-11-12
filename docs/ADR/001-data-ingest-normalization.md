@@ -1,6 +1,7 @@
 # ADR-001: Wejścia, normalizacja atrybutów, C1 i C2
 
 **Data:** 2026-11-03
+**Aktualizacja:** 2026-11-12, ustalenia z profilu M2 ([`reports/map-qa/profile.md`](../../reports/map-qa/profile.md)): `road_surface` bez `when`, mapowanie nawierzchni Overture, kod `partial_source`, nazwa kolumny `tags`
 **Status:** Accepted
 **Relates to:** [`000-main-architecture.md`](000-main-architecture.md)
 
@@ -29,7 +30,7 @@
 |---|---|---|
 | DuckDB 2.0.0 | `/duckdb/duckdb-web`; https://duckdb.org/docs/stable/core_extensions/spatial/overview | Odczyt Parquet z automatyczną konwersją kolumn geometrii, `UNNEST`, dostęp do struktur, funkcje JSON |
 | GeoPandas 1.2.0 | `/geopandas/geopandas` | Ramki z geometrią po odczycie (WKB → Shapely) |
-| Schemat Overture transportation/segment | https://docs.overturemaps.org/schema/reference/transportation/segment/ | Nazwy pól reguł (do potwierdzenia w profilu M2) |
+| Schemat Overture transportation/segment | https://docs.overturemaps.org/schema/reference/transportation/segment/ | Nazwy pól reguł (potwierdzone w profilu M2, §3) |
 | OSM `maxspeed` | https://wiki.openstreetmap.org/wiki/Key:maxspeed | Format wartości, jednostki, kody stref |
 | OSM `surface` | https://wiki.openstreetmap.org/wiki/Key:surface | Wartości nawierzchni |
 
@@ -43,6 +44,7 @@
    - Pierwszy brakujący plik albo niezgodny hash przerywa pracę błędem `InputError(file, reason)`, z kodem przyczyny `missing`, `hash_mismatch` lub `unreadable`.
    - Weryfikacja kończy się, zanim powstanie katalog wyników.
 3. Wymagane pliki: `osm_roads.parquet`, `overture_segments.parquet`, `photos.csv`, `photo_road_links.csv`, `traffic_signs.geojson`, `signs/signs.csv`, `signs/nearest_osm.csv`, `signs/labels.csv`. Pliki `signs/` są wymagane tylko z `--with-signs`. Jeśli nie ma ich w `sources.json`, sprawdzamy tylko, czy istnieją, i raportujemy to jako `hash_not_in_manifest`.
+   - Profil M2 potwierdził, że w dostarczonym snapshocie **żaden** plik `signs/` nie ma hasha w `sources.json.files`, więc ścieżka `hash_not_in_manifest` jest zawsze aktywna dla C4. Integralność wycinków zapewnia osobno `crop_sha256` z `signs.csv` (ADR-003 §3.2).
 4. Pliki opcjonalne (`signs/photos/`, `signs/crops/`, `offline/`, pobrane zdjęcia w `data/`) nie przerywają pracy. Brak pliku jest odnotowany na poziomie wiersza (PRD, sekcja 4.4).
 5. Odczyt idzie przez jedno połączenie DuckDB w pamięci, z załadowanym rozszerzeniem `spatial` (`INSTALL`/`LOAD`, bo nie ładuje się automatycznie). Parquet czytamy zwykłym czytnikiem, który przy załadowanym `spatial` sam zamienia kolumny geometrii na `GEOMETRY`. Do Pythona geometria trafia jako WKB.
 6. Liczności wierszy porównujemy z `rows` w `sources.json` (OSM 99 768, Overture 85 405, zdjęcia 561, linki 561). Przy niezgodności zwracamy `InputError(row_count_mismatch)`.
@@ -50,6 +52,8 @@
 
 ### 3.2 `normalize`: OSM
 - **Surowe tagi:** `tags_raw` (pełny JSON jako tekst) przechodzi bez zmian do modelu `OsmRoad` i do eksportu (AC-04). Nie parsujemy go „w miejscu” i nie serializujemy ponownie.
+  - Źródłem jest kolumna **`tags`** (VARCHAR) w `osm_roads.parquet`. Plik ma też gotowe kolumny `maxspeed`, `surface`, `lanes`, `lit`, `oneway` i inne. Profil M2 pokazał, że `maxspeed` = `tags.maxspeed` (0 rozbieżności). Mimo to wszystkie klucze prędkości, także kierunkowe i warunkowe, czytamy z `tags`, żeby mieć jedno źródło prawdy.
+  - W dostarczonym snapshocie wszystkie wartości `maxspeed` to liczby całkowite (4–140). **`PL:urban` występuje w 1 `maxspeed:forward` i 4 `maxspeed:backward`**, więc ścieżka `not_numeric / zone` działa na prawdziwych drogach i ma fixture z prawdziwych wierszy. `maxspeed:conditional` ma zawsze postać `110 @ (Mo-Fr 06:00-18:00)`. Ścieżki mph, `none`, `signals` i wartości wielokrotnych pokrywamy testami jednostkowymi na danych syntetycznych (TAC-001-01).
 - **Klucze prędkości** (każdy daje osobny `SpeedValue`): `maxspeed`, `maxspeed:forward`, `maxspeed:backward`, `maxspeed:conditional`, `maxspeed:type`, `source:maxspeed`, `zone:maxspeed`. Klucze `*:type`, `source:*` i `zone:*` są tylko kontekstem (bez `value_kmh`).
 - **Parser wartości `maxspeed`** (deterministyczny, w kolejności):
   1. Usuń spacje z brzegów. Pusty tekst lub brak tagu daje `missing`, a nie wiersz `SpeedValue`.
@@ -73,24 +77,31 @@ Overture rozpakowujemy w DuckDB, zachowując indeks na liście (`rule_index` od 
 - **`speed_limits`:** jeden `OvertureRule(rule_kind=speed)` na każdy element listy (AC-05). Pola:
   - `max_speed.value` i `max_speed.unit` → `value_kmh`; `mph` przeliczamy jak w OSM, `km/h` bez zmian.
   - `min_speed`, `is_max_speed_variable` zostają w `raw_json`.
-  - `when` → `when_raw` (pełny JSON), a `when.heading` → `heading`.
+  - `when` → `when_raw` (pełny JSON), a `when.heading` → `heading`. Pola `when` w danych: `during`, `heading`, `using`, `recognized`, `mode`, `vehicle`.
   - `between` → `between_start`, `between_end`.
-  - Nazwy pól są do potwierdzenia w profilu M2. Przy innych nazwach poprawiamy ADR, zanim zmienimy test.
-- **`road_surface`:** jeden `OvertureRule(rule_kind=surface)` na element. `value` → `surface_raw`, plus `when`/`between` jak wyżej.
+  - Nazwy pól potwierdził profil M2. W danych `max_speed.unit` to zawsze `km/h`, a `min_speed` nie występuje. Przeliczenie mph zostaje jako zabezpieczenie i ma test jednostkowy.
+  - W SQL DuckDB pola `when`, `between`, `using`, `mode` i `value` trzeba cytować (`s['when']` lub `"when"`), bo to słowa kluczowe.
+- **`road_surface`:** jeden `OvertureRule(rule_kind=surface)` na element. Schemat to `STRUCT(value, between)[]`, **bez `when`**. `value` → `surface_raw`, `between` jak wyżej. Każda reguła nawierzchni jest więc bezwarunkowa (`unconditional = true`, `when_raw` puste).
 - **`raw_json`:** pełna struktura elementu jako JSON (serializacja DuckDB `to_json`). Eksport pokazuje ją bez skracania.
 - **Flagi reguły:**
   - `whole_segment = true`, gdy `between` jest puste albo równe [0, 1].
-  - `unconditional = true`, gdy `when` jest puste. Jeśli `when` zawiera wyłącznie `heading`, reguła jest bezwarunkowa, ale kierunkowa.
+  - `unconditional = true`, gdy `when` jest puste. Jeśli `when` zawiera wyłącznie `heading`, reguła jest bezwarunkowa, ale kierunkowa. Każde inne niepuste pole `when` (`mode`, `during`, `using`, `recognized`, `vehicle`) czyni regułę warunkową. Najczęstszy przypadek w danych to `mode: [bus, hgv]` (395 reguł).
   - `is_max_speed_variable = true` → `comparable = false / variable`.
-- **`sources`:** jeden `OvertureSource` na element. `osm_way_id` wyprowadzamy z `record_id` według wzorca `w<liczba>@<wersja>`. Inny wzorzec, np. `n…` lub `r…`, nie daje referencji do way.
+- **`sources`:** jeden `OvertureSource` na element. `osm_way_id` wyprowadzamy z `record_id` według wzorca `w<liczba>@<wersja>`. Inny wzorzec, np. `n…` lub `r…`, nie daje referencji do way. W danych: 106 270 wpisów `w…@…`, 1 854 relacje `r…`, 791 wpisów TomTom bez `record_id` OSM.
+  - `sources[].between` → `source_between_start`, `source_between_end`. Pole oznacza część segmentu, której dotyczy dany way. `source_whole_segment = true`, gdy `between` jest puste albo równe [0, 1].
 
 ### 3.4 `normalize`: rodziny nawierzchni
 - Mapowanie trzymamy w wersjonowanym pliku `app/src/map_qa/data/surface_families.csv` z kolumnami `source` (`osm` | `overture`), `value`, `family` (`paved` | `unpaved` | `unknown`). Raport pokazuje mapowanie w całości (AC-13).
-- **Wartości startowe OSM:**
-  - `paved`: `paved`, `asphalt`, `chipseal`, `concrete`, `concrete:plates`, `concrete:lanes`, `paving_stones`, `paving_stones:lanes`, `sett`, `unhewn_cobblestone`, `cobblestone`, `bricks`, `metal`, `wood`.
+- **Wartości OSM:**
+  - `paved`: `paved`, `asphalt`, `chipseal`, `concrete`, `concrete:plates`, `concrete:lanes`, `concrete_slabs`, `concrete:slabs`, `paving_stones`, `paving_stones:lanes`, `sett`, `unhewn_cobblestone`, `cobblestone`, `bricks`, `metal`, `metal_grid`, `wood`.
   - `unpaved`: `unpaved`, `compacted`, `fine_gravel`, `gravel`, `pebblestone`, `rock`, `ground`, `dirt`, `earth`, `mud`, `sand`, `grass`, `woodchips`.
   - `unknown`: `grass_paver` i każda wartość spoza listy.
-- **Wartości Overture:** uzupełniamy po profilu M2 z listy wartości faktycznie występujących w `road_surface.value`. Do czasu uzupełnienia wszystkie mają `unknown`, więc C2 dla nawierzchni nie tworzy kandydatów, a raport to pokazuje.
+  - Dopisane po profilu M2: `concrete_slabs`, `concrete:slabs`, `metal_grid` (razem 9 dróg).
+  - **Literówek i wartości lokalnych nie poprawiamy.** `contrete:plates`, `conrete:plates`, `ompacted`, `paving_Stones`, `utwardzona`, `kostka_/_płyty_chodnikowex`, `grass/dirt` i `bad` (10 dróg) dostają `unknown`. To dane do poprawy w OSM, nie w mapowaniu. Dopasowanie bez rozróżniania wielkości liter też odrzucamy, bo ukryłoby błędy tagowania.
+- **Wartości Overture** (komplet z profilu M2, 7 wartości):
+  - `paved`: `paved`, `paving_stones`, `metal`,
+  - `unpaved`: `unpaved`, `gravel`, `dirt`,
+  - `unknown`: `unknown`.
 - Nowa wartość spoza pliku dostaje `unknown`. Raport wypisuje listę takich wartości z licznością.
 
 ### 3.5 `checks`: C1
@@ -100,6 +111,8 @@ Overture rozpakowujemy w DuckDB, zachowując indeks na liście (`rule_index` od 
 
 ### 3.6 `checks`: C2
 1. **Pary:** dla każdego `OvertureSource` z `osm_way_id` istniejącym w `osm_roads` tworzymy parę (way, segment) z `match_method = osm_source_reference` (AC-11). Segmenty bez takiej referencji nie są porównywane. Ich linki `spatial_fallback` z `photo_road_links.csv` trafiają na listę „tylko przestrzenne”.
+   - W danych 84 611 z 85 405 segmentów (99,1%) ma referencję do way. Daje to 106 270 par, w tym 105 809 z way obecnym w snapshocie. Jeden segment bywa zbudowany z kilku way.
+   - **Częściowe źródło:** jeśli `source_whole_segment = false` (way dotyczy tylko części segmentu), wszystkie porównania tej pary trafiają do „not comparable / `partial_source`”. Reguła Overture na cały segment nie musi odpowiadać wartości z way, który obejmuje tylko jego fragment. Zgodnie z PRD 4.5 nie wymuszamy porównania.
 2. **Prędkość** (AC-12, AC-14), dla każdej pary i każdego kierunku (`both`, `forward`, `backward`):
    - **Strona OSM:**
      - Bierzemy `SpeedValue` dla danego kierunku. `forward`/`backward` dziedziczą `both`, jeśli nie mają własnego tagu.
@@ -115,9 +128,10 @@ Overture rozpakowujemy w DuckDB, zachowując indeks na liście (`rule_index` od 
    - **Wynik porównania:**
      - Obie strony `numeric` i różna wartość po zaokrągleniu do 0,1 km/h: kandydat `C2 / speed_mismatch`.
      - Obie wartości równe: brak kandydata.
-     - Po którejkolwiek stronie `not_numeric`, reguła warunkowa, częściowa albo niejednoznaczna (więcej niż jedna reguła kwalifikująca się dla tego samego kierunku): wiersz „not comparable” z kodem `not_numeric`, `conditional`, `partial_segment`, `direction_unknown`, `variable` lub `multiple_rules`.
+     - Po którejkolwiek stronie `not_numeric`, reguła warunkowa, częściowa albo niejednoznaczna (więcej niż jedna reguła kwalifikująca się dla tego samego kierunku): wiersz „not comparable” z kodem `not_numeric`, `conditional`, `partial_segment`, `partial_source`, `direction_unknown`, `variable` lub `multiple_rules`.
+     - Para „reguła bezwarunkowa + reguła warunkowa” (np. 70 dla wszystkich i 50 dla `mode: [bus, hgv]`) **nie** daje `multiple_rules`, bo kwalifikuje się tylko reguła bezwarunkowa.
      - Brak wartości po jednej stronie to sprawa C1, nie C2.
-3. **Nawierzchnia** (AC-13): OSM `surface` z jednej strony. Z drugiej Overture `road_surface` z `whole_segment` i `unconditional`. Kandydat `C2 / surface_family_mismatch` powstaje, gdy obie rodziny są znane i różne. `unknown` po którejkolwiek stronie daje „not comparable / unknown_family”.
+3. **Nawierzchnia** (AC-13): OSM `surface` z jednej strony. Z drugiej Overture `road_surface` z `whole_segment` (reguły nawierzchni zawsze są bezwarunkowe, punkt 3.3). Kandydat `C2 / surface_family_mismatch` powstaje, gdy obie rodziny są znane i różne. `unknown` po którejkolwiek stronie daje „not comparable / unknown_family”. Reguły z `between` dają `partial_segment`, a częściowe źródło daje `partial_source`.
 4. **Pola kandydata** (AC-15): obie wartości surowe, obie znormalizowane, `osm_id`, `segment_id`, `rule_index`, `osm_extract_date`, `overture_release`.
 
 ---
@@ -179,7 +193,7 @@ Dodatkowo `NotComparable`: `check`, `osm_id`, `segment_id`, `rule_index`, `direc
 - (+) Brak utraty informacji.
 - (-) Więcej wierszy „not comparable”.
 
-**Review trigger:** profil M2 pokazuje inne nazwy pól.
+**Review trigger:** zmiana schematu Overture w nowym wydaniu. Profil M2 z 2026-11-12 potwierdził nazwy pól dla wydania 2026-10-21.0.
 
 ### D-103: Porównanie tylko przez referencję źródła
 **Status:** Accepted
@@ -194,7 +208,7 @@ Dodatkowo `NotComparable`: `check`, `osm_id`, `segment_id`, `rule_index`, `direc
 - (+) Mniej fałszywych alarmów.
 - (-) Segmenty bez referencji są poza C2.
 
-**Review trigger:** udział segmentów bez referencji OSM powyżej 20% w profilu.
+**Review trigger:** udział segmentów bez referencji OSM powyżej 20% w profilu. Profil M2 z 2026-11-12 pokazał 0,9%.
 
 ### D-104: Kontrola kierunku geometrii przed porównaniem kierunkowym
 **Status:** Accepted
@@ -271,12 +285,14 @@ sequenceDiagram
 | `maxspeed` nie-liczba | Unit | `PL:urban`, `none`, `signals`, `50;70`, `fast` | `zone`, `none`, `signals`, `multi_value`, `unparsable` | `walk` → `zone` |
 | `maxspeed` kierunkowy | Unit | `maxspeed=50`, `maxspeed:forward=70` | forward 70, backward dziedziczy 50 | Tylko `:backward` |
 | Tagi surowe | Unit | Prawdziwy wiersz OSM z fixture'a | `tags_raw` identyczne bajtowo w eksporcie | Polskie znaki w `name` |
-| Trzy reguły Overture | Integration | Prawdziwy segment z ≥ 2 regułami (wybrany w profilu) | Tyle `OvertureRule`, ile elementów, `rule_index` 0..n−1 | `when` z samym `heading` |
+| Trzy reguły Overture | Integration | Prawdziwy segment `00836247-b00a-40ea-99b0-703841eb9028` (3 reguły z `between`) | 3 × `OvertureRule`, `rule_index` 0..2, `whole_segment = false` | `009debd5-c2b6-4f7c-9742-b798fd175449`: bezwarunkowa 70 + `mode: [bus, hgv]` 50 → jedna reguła kwalifikująca się, brak `multiple_rules` |
 | Reguła częściowa | Unit | `between = [0.2, 0.6]` | `whole_segment = false`, not comparable `partial_segment` | `between = [0, 1]` → whole |
+| Częściowe źródło | Unit | `sources[].between = [0.0, 0.2996]` dla `w75390950@17` | Para (way, segment) → not comparable `partial_source` | `sources[].between` puste → porównanie normalne |
+| Nawierzchnia Overture bez `when` | Integration | Prawdziwy segment z `road_surface` | `unconditional = true`, `when_raw` puste | Element z `between` → `partial_segment` |
 | `record_id` | Unit | `w123@4`, `n5@1`, pusty | 123, brak, brak | Brak `@` |
 | C2 rozbieżność | Unit | OSM 50, Overture 60 bezwarunkowo | `speed_mismatch` z obiema wartościami i datami | Wartości równe → brak kandydata |
 | C2 kierunek odwrócony | Unit | Geometria segmentu odwrócona, reguła `forward` | Porównanie z OSM `backward` | Azymut 90° → `direction_unknown` |
-| C2 nawierzchnia | Unit | `asphalt` vs Overture `gravel` (po uzupełnieniu mapowania) | `surface_family_mismatch` | `grass_paver` → `unknown_family` |
+| C2 nawierzchnia | Unit | `asphalt` vs Overture `gravel` | `surface_family_mismatch` | `grass_paver` → `unknown_family`; literówka `contrete:plates` → `unknown_family`; Overture `unknown` → `unknown_family` |
 | C1 bez zdjęcia | Unit | Droga bez `maxspeed` i bez linku | Liczona w podsumowaniu, bez zadania | Droga z dwoma zdjęciami → jedno zadanie |
 | C1 udziały | Integration | Pełny snapshot (E2E) | Suma po klasach równa liczności OSM | Klasa bez braków → 0 / n |
 
