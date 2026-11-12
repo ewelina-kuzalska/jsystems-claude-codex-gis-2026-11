@@ -7,3 +7,6 @@
 
 # map-qa: fixture bytes must match their SHA-256 in sources.json
 app/tests/fixtures/** -text
+# map-qa: templates and golden snapshots compared byte-for-byte
+app/src/map_qa/templates/*.j2 text eol=lf
+app/tests/**/__snapshots__/*.ambr text eol=lf
