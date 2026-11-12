@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,8 +36,8 @@ class RunConfig:
             raise ConfigError(f"--max-requests musi być w zakresie 1–{MAX_REQUESTS_LIMIT}")
         if not 0.0 <= self.threshold <= 1.0:
             raise ConfigError("--threshold musi być w zakresie 0–1")
-        if self.max_cost_usd < 0:
-            raise ConfigError("--max-cost-usd nie może być ujemny")
+        if not math.isfinite(self.max_cost_usd) or self.max_cost_usd < 0:
+            raise ConfigError("--max-cost-usd musi być skończoną liczbą nieujemną")
         if self.sign_sample is not None and self.sign_sample < 0:
             raise ConfigError("--sign-sample nie może być ujemny")
         if self.tier1_model not in TIER1_MODELS:

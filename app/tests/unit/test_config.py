@@ -60,3 +60,9 @@ def test_cache_dir_default_and_env(monkeypatch, tmp_path):  # ADR-005 D-502
     assert make(input_dir=tmp_path).cache_dir == tmp_path / "data" / "cache" / "ai"
     monkeypatch.setenv("MAP_QA_CACHE_DIR", str(tmp_path / "c"))
     assert make(input_dir=tmp_path).cache_dir == tmp_path / "c"
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -0.1])
+def test_cost_limit_must_be_finite(value):
+    with pytest.raises(ConfigError):
+        make(max_cost_usd=value)

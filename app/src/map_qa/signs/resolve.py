@@ -8,7 +8,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from map_qa.ai_client import SPEED_OPTIONS, BudgetExhausted, ModelUnavailable, RequestBudget
+from map_qa.ai_client import (
+    SPEED_OPTIONS,
+    BudgetExhausted,
+    ModelUnavailable,
+    RequestBudget,
+    redact,
+)
 from map_qa.cache import AiCache
 from map_qa.model import SignReading, SignResolution
 
@@ -137,7 +143,7 @@ def resolve_signs(
         except ModelUnavailable as exc:
             stopped = "model_unavailable"
             budget.stop("model_unavailable", item.photo_id)
-            budget.last_error = f"{exc.reason} {exc.detail}".strip()
+            budget.last_error = redact(f"{exc.reason} {exc.detail}".strip())
             raise _Stopped(stopped) from exc
         cache.put(key, new_entry)
         return reading

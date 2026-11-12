@@ -22,9 +22,25 @@ pytestmark = pytest.mark.live_api
 def _run(out: Path, cache: Path, *extra: str) -> tuple[subprocess.CompletedProcess, dict]:
     env = {**os.environ, "PYTHONUTF8": "1", "MAP_QA_CACHE_DIR": str(cache)}
     proc = subprocess.run(
-        [sys.executable, "-m", "map_qa.cli", "run", "--input", str(REAL_INPUT), "--output",
-         str(out), "--with-signs", "--yes", *extra],
-        cwd=REPO_ROOT, capture_output=True, text=True, encoding="utf-8", env=env, timeout=900,
+        [
+            sys.executable,
+            "-m",
+            "map_qa.cli",
+            "run",
+            "--input",
+            str(REAL_INPUT),
+            "--output",
+            str(out),
+            "--with-signs",
+            "--yes",
+            *extra,
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env=env,
+        timeout=900,
     )
     assert proc.returncode == 0, proc.stderr + proc.stdout
     run_dir = sorted(p for p in out.iterdir() if p.is_dir())[-1]

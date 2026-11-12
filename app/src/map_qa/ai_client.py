@@ -12,8 +12,11 @@ import json
 import logging
 import math
 import os
+import re
 import time
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
 from dataclasses import dataclass, field
 
 import httpx
@@ -209,6 +212,7 @@ class OpenRouterClient:
         api_key: Callable[[], str | None] = _env_key,
         deadline_s: float = DEADLINE_S,
     ) -> None:
+        self._transport = transport
         self._http = httpx.Client(timeout=TIMEOUT, transport=transport)
         self._clock = clock
         self._api_key = api_key
@@ -218,6 +222,23 @@ class OpenRouterClient:
         self._http.close()
 
     def post_json(self, url: str, body: dict) -> RawResponse:
+        """Jedno żądanie z twardym terminem: wątek roboczy + `result(timeout)` (AC-25).
+
+        Po przekroczeniu terminu klient jest zamykany (przerywa blokujący odczyt) i tworzony
+        od nowa; płatna pętla i tak się wtedy zatrzymuje (AC-24)."""
+        pool = ThreadPoolExecutor(max_workers=1)
+        future = pool.submit(self._post, url, body)
+        try:
+            return future.result(timeout=self._deadline)
+        except FutureTimeout as exc:
+            old = self._http
+            self._http = httpx.Client(timeout=TIMEOUT, transport=self._transport)
+            old.close()
+            raise ModelUnavailable("timeout", f"> {self._deadline:.0f} s") from exc
+        finally:
+            pool.shutdown(wait=False)
+
+    def _post(self, url: str, body: dict) -> RawResponse:
         headers = {"Content-Type": "application/json"}
         key = self._api_key()
         if key:
@@ -241,6 +262,17 @@ class OpenRouterClient:
             raise ModelUnavailable("timeout", type(exc).__name__) from exc
         except httpx.HTTPError as exc:
             raise ModelUnavailable("network_error", type(exc).__name__) from exc
+
+
+def redact(text: str, limit: int = 300) -> str:
+    """Treść błędu do raportu: bez klucza API i nagłówka Bearer, skrócona (AC-37, TAC-06)."""
+    out = str(text or "")
+    key = _env_key()
+    if key:
+        out = out.replace(key, "***")
+    out = re.sub(r"(?i)bearer\s+\S+", "Bearer ***", out)
+    out = re.sub(r"sk-or-[A-Za-z0-9_-]+", "sk-or-***", out)
+    return out if len(out) <= limit else out[:limit] + "…"
 
 
 # --- Interpretacja odpowiedzi (kontrakt z zapisów T00b, ADR-003 §3.3–3.4) ------------------
@@ -276,6 +308,15 @@ def _prob(value) -> float:
 
 
 def interpret_tier1(text: str) -> dict:
+    try:
+        return _interpret_tier1(text)
+    except ModelUnavailable:
+        raise
+    except (AttributeError, TypeError, KeyError, ValueError) as exc:
+        raise ModelUnavailable("invalid_response", type(exc).__name__) from exc
+
+
+def _interpret_tier1(text: str) -> dict:
     body = _json(text)
     answer = (body.get("answers") or {}).get("b33_value") or {}
     choice = answer.get("choice")
@@ -294,6 +335,15 @@ def interpret_tier1(text: str) -> dict:
 
 
 def interpret_tier2(text: str) -> dict:
+    try:
+        return _interpret_tier2(text)
+    except ModelUnavailable:
+        raise
+    except (AttributeError, TypeError, KeyError, ValueError) as exc:
+        raise ModelUnavailable("invalid_response", type(exc).__name__) from exc
+
+
+def _interpret_tier2(text: str) -> dict:
     body = _json(text)
     try:
         content = body["choices"][0]["message"]["content"]
@@ -368,7 +418,7 @@ class SignReader:
         budget.reserve(tier)  # licznik przed wysłaniem (AC-23)
         raw = self.client.post_json(url, body)
         if not 200 <= raw.status < 300:
-            raise ModelUnavailable(f"http_{raw.status}", raw.text[:500])
+            raise ModelUnavailable(f"http_{raw.status}", redact(raw.text))
         try:
             interp = interpret_tier1(raw.text) if tier == 1 else interpret_tier2(raw.text)
         except ModelUnavailable:

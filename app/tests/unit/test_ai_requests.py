@@ -202,3 +202,67 @@ def test_no_retry_transport_or_sdk_in_code():  # TAC-003-01
 
 def test_contract_flag_exists():
     assert isinstance(ac.RESPONSE_CONTRACT_VERIFIED, bool)
+
+
+# --- Poprawki po przeglądzie T27 ------------------------------------------------------------
+
+
+def test_real_deadline_aborts_blocked_read():  # AC-25: blokujący odczyt nie przedłuża terminu
+    import threading
+
+    release = threading.Event()
+
+    class Slow(httpx.SyncByteStream):
+        def __iter__(self):
+            release.wait(5)
+            yield b"{}"
+
+    def handler(request):
+        return httpx.Response(200, stream=Slow())
+
+    client = ac.OpenRouterClient(
+        transport=httpx.MockTransport(handler), api_key=lambda: "k", deadline_s=0.3
+    )
+    import time
+
+    start = time.monotonic()
+    with pytest.raises(ac.ModelUnavailable) as exc:
+        client.post_json(ac.DECISIONS_URL, {})
+    release.set()
+    assert exc.value.reason == "timeout"
+    assert time.monotonic() - start < 2.0
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"answers":{"b33_value":[1]}}',
+        '{"answers":[1]}',
+        "[1]",
+        '{"answers":{"b33_value":{"choice":"50","probabilities":{"50":"x"}}}}',
+    ],
+)
+def test_malformed_tier1_is_invalid_response_not_crash(text):
+    with pytest.raises(ac.ModelUnavailable) as exc:
+        ac.interpret_tier1(text)
+    assert exc.value.reason == "invalid_response"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"choices":"x"}',
+        '{"choices":[{"message":{"content":5}}]}',
+        '{"choices":[{"message":{"content":"[1]"}}]}',
+    ],
+)
+def test_malformed_tier2_is_invalid_response_not_crash(text):
+    with pytest.raises(ac.ModelUnavailable) as exc:
+        ac.interpret_tier2(text)
+    assert exc.value.reason == "invalid_response"
+
+
+def test_error_detail_redacts_key(monkeypatch):  # AC-37, TAC-06
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-SECRET-123456789")
+    assert "SECRET" not in ac.redact("invalid key sk-or-SECRET-123456789 given")
+    assert ac.redact("x" * 900).endswith("…") and len(ac.redact("x" * 900)) <= 301
