@@ -5,6 +5,7 @@
 Konsola: C1 170, C2 9, C3 170, C4 11, C4-manual 0; C4: 12 nowych żądań kroku 1 + 12 z cache, 24 × `decision_model`, 95 × `not_run`; kod 0.
 Playwright (Edge) na tym `report.html`: 0 błędów konsoli i strony, 0 nieudanych i 0 zewnętrznych żądań, 56/56 obrazów, polskie znaki OK, zrzuty sekcji w tym katalogu.
 GIS (zamiast QGIS, którego nie ma na VM): `tasks.geojson` otwarty sterownikiem GDAL GeoJSON (pyogrio, ten sam sterownik co QGIS): 360 obiektów, EPSG:4326, zasięg 19,797–20,149 E, 49,950–50,150 N; 3 linie mają środek tuż poza bbox, bo snapshot zawiera całe drogi przecinające granicę (`boundary_crossing`).
+Kontrola na mapie (ADR-004 §8 krok 5, zamiast QGIS): `tasks.geojson` wyrenderowany w Leaflet 1.9.4 na podkładzie OSM (Edge/Playwright, 0 błędów, 360 obiektów) — [`tasks-map.png`](tasks-map.png). Obejrzane wizualnie: linie C1/C2 leżą na drogach (m.in. A4/S7, ulice Krakowa), punkty C3/C4 przy drogach, wszystko w bbox PRD poza końcówkami dróg przecinających granicę; brak przesunięcia i zamiany osi.
 Testy na snapshocie w repo: 290 zaliczonych, 0 pominiętych; `live_api`: 5/5.
 
 | Kryterium | Dowód |
