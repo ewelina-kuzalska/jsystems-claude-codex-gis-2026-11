@@ -1,60 +1,44 @@
-# App
+# map-qa
 
-This folder will contain the application built during the course.
+Narzędzie CLI, które na lokalnym snapshocie danych Krakowa (OSM, Overture, zdjęcia Panoramax/Mapillary) tworzy raport kandydatów do sprawdzenia atrybutów dróg oraz eksport zadań. Wymagania: [`docs/PRD.md`](../docs/PRD.md), architektura: [`docs/ADR/`](../docs/ADR/).
 
-## How to start
+## Kontrole
+- **C1** brakujące atrybuty (`maxspeed*`, `surface`, `lanes`, `lit`; segmenty Overture bez reguł),
+- **C2** rozbieżności OSM ↔ Overture (prędkość, rodzina nawierzchni) tylko przez referencję źródła,
+- **C3** niepewne dopasowania zdjęcie–droga (flagi z pliku + kontrola własna w EPSG:2180),
+- **C4** odczyt znaku B-33 przez AI: model decyzyjny → ogólny LLM → kolejka ręczna (opcjonalnie, `--with-signs`).
 
-The app is scaffolded live during the course through a structured process:
+## Szybki start (z korzenia repozytorium)
 
-1. **Research** — use agents to research and validate the project idea
-2. **PRD** — generate a Product Requirements Document (`../docs/PRD.md`)
-3. **ADR** — generate Architecture Decision Records (`../docs/ADR/`) to choose the tech stack
-4. **Scaffold** — use the chosen boilerplate (`create-next-app`, AI SDK starter, Mastra, etc.)
-5. **Implement** — build features with agents using TDD
+```bash
+uv sync --frozen --project app
+uv run --project app map-qa run                 # C1–C3, C4 = „nie uruchomiono”
+uv run --project app map-qa run --with-signs    # z C4: plan, potwierdzenie „tak/nie”, limit 25 żądań
+```
 
-## Checklist
+Wyniki trafiają do `reports/map-qa/runs/<run_id>/`: `report.md`, `report.html`, `tasks.geojson`, `tasks.csv`, `summary.json`, `images/`.
 
-Use this checklist during scaffolding. Some items are provided by the boilerplate (e.g. `create-next-app` ships `tsconfig.json`, ESLint config). Others you add explicitly.
+### Opcje `map-qa run`
+| Opcja | Domyślnie | Opis |
+|---|---|---|
+| `--input` | `course-materials/exercise-data/map-qa` | Katalog snapshotu |
+| `--output` | `reports/map-qa/runs` | Katalog wyników |
+| `--with-signs` | wyłączone | Włącza C4 |
+| `--tier1-model` | `jev` | Model kroku 1: `jev` (`typesafe/jev-1.14`) albo `luna-decisions` |
+| `--max-requests` | 25 | Limit żądań AI (1–25), wspólny dla obu kroków |
+| `--threshold` | 0.7 | Próg pewności (0–1) |
+| `--max-cost-usd` | 0.50 | Limit kosztu |
+| `--sign-sample` | — | Zmniejsza liczbę nowych wycinków (domyślnie `floor(limit/2)`) |
+| `--yes` | — | Potwierdza C4 bez pytania |
 
-### Project setup
-- [ ] Choose framework (Next.js, Express+Vite, Mastra, other) — record in ADR
-- [ ] Initialize project (e.g. `npx create-next-app@latest` or equivalent)
-- [ ] TypeScript config (`tsconfig.json`)
-- [ ] Package manager chosen (npm / pnpm / bun)
+Kody wyjścia: 0 sukces, 2 błąd wejść lub opcji, 3 błąd zapisu, 4 niezgodność liczników.
 
-### Code quality
-- [ ] ESLint config (`eslint.config.js`)
-- [ ] Prettier config (`.prettierrc`, `.prettierignore`)
-- [ ] `.editorconfig` (optional but recommended)
+`OPENROUTER_API_KEY` jest potrzebny tylko dla `--with-signs`. Cache odpowiedzi AI: `<input>/data/cache/ai/` (nadpisanie: `MAP_QA_CACHE_DIR`).
 
-### Testing
-- [ ] Unit/integration test runner (Vitest / Jest)
-- [ ] E2E test runner (Playwright)
-- [ ] Test setup file (e.g. `test-setup.ts` with Testing Library matchers)
+## Testy (z `app/`)
 
-### Environment
-- [ ] `.env.example` with required env vars (API keys, ports)
-- [ ] `.env` created locally (gitignored)
-- [ ] `.gitignore` (node_modules, .env, build output, etc.)
-
-### AI integration
-- [ ] Vercel AI SDK (`ai` package) or equivalent
-- [ ] API route / endpoint for chat
-- [ ] Model configuration (provider, model name, API key from env)
-
-### Design
-- [ ] Design tokens (`../assets/design-tokens.json`)
-- [ ] Tailwind CSS or equivalent
-- [ ] Logo and favicon (`../assets/`)
-- [ ] Design system doc (`../docs/design-guidelines.md`)
-
-### Documentation
-- [ ] PRD (`../docs/PRD.md`)
-- [ ] ADRs (`../docs/ADR/`)
-- [ ] AGENTS.md in `app/` with stack-specific rules
-
-## Notes
-
-- Don't create config files manually if the boilerplate provides them — it leads to conflicts.
-- Let the agent research and recommend the right boilerplate based on the ADR decisions.
-- Keep this folder organized: separate routes, components, domain logic, and tests.
+```bash
+uv run pytest                               # bez sieci
+uv run pytest -m live_api -p no:recording   # prawdziwe endpointy OpenRouter (ADR-006)
+uv run ruff check && uv run ruff format --check
+```

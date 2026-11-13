@@ -1,0 +1,20 @@
+Snapshot OK: ekstrakt OSM 2026-11-01T21:21:36Z, wydanie Overture 2026-10-21.0, utworzony 2026-11-02T23:52:58.440512+00:00.
+Wiersze: drogi OSM 99768, segmenty Overture 85405, zdjęcia 561, linki 561 (zgodne z manifestem).
+Uwaga: signs/signs.csv: hash_not_in_manifest (sprawdzono tylko obecność)
+Uwaga: signs/nearest_osm.csv: hash_not_in_manifest (sprawdzono tylko obecność)
+Uwaga: signs/labels.csv: hash_not_in_manifest (sprawdzono tylko obecność)
+C1 brakujące atrybuty: 170 zadań (drogi ze zdjęciem).
+C2 OSM vs Overture: 9 kandydatów, 32249 nieporównywalnych, 64643 porównań.
+C3 niepewne dopasowania: 170 zdjęć z flagą.
+Plan C4 (openai/gpt-6-luna-decisions → openai/gpt-6-luna): wycinki w próbce 12 z 119 (w cache 0, odrzucone przed wysłaniem 0); nowe żądania kroku 1: 12; najgorszy przypadek kroku 2: 12; próg 0.70; limit żądań 25; limit kosztu 0.50 USD.
+C4: żądania krok 1 12 / krok 2 4 (razem 16 / limit 25), z cache 0 + 0; decision_model 8, general_llm 2, human_pending 2, not_run 107.
+Kandydaci per kontrola: C1 170, C2 9, C3 170, C4 6, C4-manual 2
+Wyniki:
+  reports\map-qa\runs\20261112T163649Z\report.md
+  reports\map-qa\runs\20261112T163649Z\report.html
+  reports\map-qa\runs\20261112T163649Z\tasks.geojson
+  reports\map-qa\runs\20261112T163649Z\tasks.csv
+
+real	1m9.651s
+user	0m0.062s
+sys	0m0.015s

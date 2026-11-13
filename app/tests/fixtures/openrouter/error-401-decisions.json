@@ -1,0 +1,62 @@
+{
+  "captured_at": "2026-11-12T15:11:13+00:00",
+  "endpoint": "https://openrouter.ai/api/alpha/decisions",
+  "model": "typesafe/jev-1.14",
+  "contract_versions": {
+    "STATE_TEXT": "V1",
+    "QUESTION": "V1",
+    "SCHEMA": "V1",
+    "IMAGE": "JEV_RESIZE_V1"
+  },
+  "httpx_version": "0.28.1",
+  "note": "Decisions bez klucza API w nagłówkach (bez kosztu)",
+  "sent_image_sha256": "31a090fa9437fa02c8849d681952f6ebbc5a5b11b70f19e008fde029950cb408",
+  "sent_image_size": [
+    285,
+    280
+  ],
+  "elapsed_s": 0.359,
+  "request_summary": {
+    "model": "typesafe/jev-1.14",
+    "state": [
+      "An image crop from a street-level photograph.",
+      {
+        "type": "image_url",
+        "image_url": {
+          "url": "<image sha256=31a090fa9437fa02c8849d681952f6ebbc5a5b11b70f19e008fde029950cb408>"
+        }
+      }
+    ],
+    "questions": {
+      "b33_value": {
+        "type": "choice",
+        "instructions": "Is there a round Polish B-33 maximum speed limit sign (red ring, black number) in this image? If yes, which number does it show?",
+        "criteria": {
+          "10": "a B-33 sign showing this number",
+          "20": "a B-33 sign showing this number",
+          "30": "a B-33 sign showing this number",
+          "40": "a B-33 sign showing this number",
+          "50": "a B-33 sign showing this number",
+          "60": "a B-33 sign showing this number",
+          "70": "a B-33 sign showing this number",
+          "80": "a B-33 sign showing this number",
+          "90": "a B-33 sign showing this number",
+          "100": "a B-33 sign showing this number",
+          "110": "a B-33 sign showing this number",
+          "120": "a B-33 sign showing this number",
+          "130": "a B-33 sign showing this number",
+          "140": "a B-33 sign showing this number",
+          "other": "a B-33 sign whose number is not in this list",
+          "none": "no B-33 sign; includes zone signs and end-of-limit signs",
+          "unreadable": "a sign is present but its number cannot be read"
+        }
+      }
+    }
+  },
+  "status": 401,
+  "headers": {
+    "date": "Thu, 12 Nov 2026 15:11:14 GMT",
+    "content-type": "application/json"
+  },
+  "body": "{\"error\":{\"message\":\"No cookie auth credentials found\",\"code\":401}}"
+}

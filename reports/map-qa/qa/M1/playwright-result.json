@@ -1,0 +1,46 @@
+{
+  "title": "Map QA — raport kandydatów do sprawdzenia",
+  "lang": "pl",
+  "sections": [
+    "top",
+    "summary",
+    "c4-block",
+    "c1",
+    "c2",
+    "c3",
+    "c4",
+    "manual",
+    "not-comparable",
+    "spatial-only",
+    "surface-mapping",
+    "disclaimers"
+  ],
+  "screenshots": [
+    "01-top.png",
+    "02-summary.png",
+    "03-c4-block.png",
+    "04-c1.png",
+    "05-c2.png",
+    "06-c3.png",
+    "07-c4.png",
+    "08-manual.png",
+    "09-not-comparable.png",
+    "10-spatial-only.png",
+    "11-surface-mapping.png",
+    "12-disclaimers.png"
+  ],
+  "images_total": 45,
+  "images_broken": [],
+  "console": [],
+  "page_errors": [],
+  "failed_requests": [],
+  "external_requests": [],
+  "polish_chars_ok": true,
+  "data_counts": {
+    "C1": 170,
+    "C2": 9,
+    "C3": 170,
+    "C4": 0,
+    "C4-manual": 0
+  }
+}

@@ -1,0 +1,9 @@
+photo_id,osm_way_id,distance_m,heading_diff_deg,highway,maxspeed,maxspeed_forward,maxspeed_backward,osm_timestamp,source,osm_snapshot_timestamp,search_radius_m,candidate_count,match_flags,maxspeed_conditional,oneway,overpass_endpoint,context_endpoint,context_retrieved_at
+mapillary_1931009810597411,187014751,7.844,1.225,residential,40,,,2026-06-07 17:20:26+00:00,osm_roads.parquet,2026-11-01T21:21:36Z,25,1,,,,,,
+mapillary_224324516912032,93576413,1.139,6.528,unclassified,,,,2026-07-30 15:40:48+00:00,osm_roads.parquet,2026-11-01T21:21:36Z,25,2,,,no,,,
+mapillary_1237130608489136,557114409,1.316,0.914,secondary,,50,70,2025-08-25 09:03:53+00:00,osm_roads.parquet,2026-11-01T21:21:36Z,25,3,,,,,,
+mapillary_915915556657317,1324840336,102.857,10.22,service,,,,2024-10-17T18:58:03Z,osm_api,,150,4,ambiguous_candidates;outside_standard_25m;service_way,,,,https://api.openstreetmap.org/api/0.6/map,2026-11-03T08:26:32.332584+00:00
+mapillary_491666962263649,295495115,0.175,0.197,motorway,120,,,2026-10-21T15:04:46Z,osm_api,,150,11,,,yes,,https://api.openstreetmap.org/api/0.6/map,2026-11-03T08:27:52.763875+00:00
+mapillary_1543264237143674,164843389,3.573,2.696,tertiary,,,,2023-02-12T20:52:37Z,osm_api,,150,14,,,,,https://api.openstreetmap.org/api/0.6/map,2026-11-03T08:28:14.697499+00:00
+mapillary_305451881039193,1156788934,1.175,5.441,primary,50,,,2026-02-21 10:25:47+00:00,osm_roads.parquet,2026-11-01T21:21:36Z,25,4,,,yes,,,
+mapillary_137982605041578,22766069,0.353,1.665,motorway,140,,,2026-03-09 09:37:47+00:00,osm_roads.parquet,2026-11-01T21:21:36Z,25,3,,110 @ (Mo-Fr 06:00-18:00),yes,,,

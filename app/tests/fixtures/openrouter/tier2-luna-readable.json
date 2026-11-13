@@ -1,0 +1,106 @@
+{
+  "captured_at": "2026-11-12T15:10:04+00:00",
+  "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+  "model": "openai/gpt-6-luna",
+  "contract_versions": {
+    "STATE_TEXT": "V1",
+    "QUESTION": "V1",
+    "SCHEMA": "V1",
+    "IMAGE": "ORIGINAL"
+  },
+  "httpx_version": "0.28.1",
+  "note": "Luna LLM, wycinek czytelny (etykieta 50)",
+  "sent_image_sha256": "e81d905bd7e2b4cbff907f35d32d00c864242cb172e93eb25dcb303b3def2b8d",
+  "sent_image_size": [
+    175,
+    172
+  ],
+  "elapsed_s": 2.875,
+  "request_summary": {
+    "model": "openai/gpt-6-luna",
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "Is there a round Polish B-33 maximum speed limit sign (red ring, black number) in this image? If yes, which number does it show? Answer with JSON only."
+          },
+          {
+            "type": "image_url",
+            "image_url": {
+              "url": "<image sha256=e81d905bd7e2b4cbff907f35d32d00c864242cb172e93eb25dcb303b3def2b8d>"
+            }
+          }
+        ]
+      }
+    ],
+    "reasoning": {
+      "effort": "medium"
+    },
+    "max_tokens": 4000,
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "b33_reading",
+        "strict": true,
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "answer",
+            "value_kmh",
+            "confidence"
+          ],
+          "properties": {
+            "answer": {
+              "type": "string",
+              "enum": [
+                "10",
+                "20",
+                "30",
+                "40",
+                "50",
+                "60",
+                "70",
+                "80",
+                "90",
+                "100",
+                "110",
+                "120",
+                "130",
+                "140",
+                "other_value",
+                "none",
+                "unreadable"
+              ]
+            },
+            "value_kmh": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 5,
+              "maximum": 140
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        }
+      }
+    },
+    "provider": {
+      "require_parameters": true
+    }
+  },
+  "status": 200,
+  "headers": {
+    "date": "Thu, 12 Nov 2026 15:10:04 GMT",
+    "content-type": "application/json",
+    "x-generation-id": "gen-1794496203-BQTzmaHBhs7WLAqLgC9N"
+  },
+  "body": "\n         \n{\"id\":\"gen-1794496203-BQTzmaHBhs7WLAqLgC9N\",\"object\":\"chat.completion\",\"created\":1794496203,\"model\":\"openai/gpt-6-luna\",\"provider\":\"Azure\",\"system_fingerprint\":null,\"service_tier\":\"default\",\"choices\":[{\"index\":0,\"logprobs\":null,\"finish_reason\":\"stop\",\"native_finish_reason\":\"completed\",\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"answer\\\":\\\"50\\\",\\\"value_kmh\\\":50,\\\"confidence\\\":0.99}\",\"refusal\":null,\"reasoning\":\"**Identifying JSON schema**\\n\\nI need to specify sign 50 and make sure it matches the JSON schema. I'm planning to check 50 values and confirm that the confidence level is also 50. It's important to ensure that the user is clear about asking yes or which option they want. I'll prepare to output only the JSON response to keep it neat and straightforward. It’s all about clarity and precision here!\",\"reasoning_details\":[{\"type\":\"reasoning.summary\",\"summary\":\"**Identifying JSON schema**\\n\\nI need to specify sign 50 and make sure it matches the JSON schema. I'm planning to check 50 values and confirm that the confidence level is also 50. It's important to ensure that the user is clear about asking yes or which option they want. I'll prepare to output only the JSON response to keep it neat and straightforward. It’s all about clarity and precision here!\",\"format\":\"azure-openai-responses-v1\",\"index\":0},{\"type\":\"reasoning.encrypted\",\"data\":\"gAAAAABq9dbNj-Jf4HnANiQIaG5-X70Z7TGLEyVTmzrTUeFcLm1HM3_ckOTDeRMqbzIite6k5Pl5lg5V9LksA3x20BnioTdXOr1KXfr42pbgBr5dJY9eJIEEVsL9nmMiwhvd5VSzDdGAMdObq5wc6XetI8_cZ4QECHrXQn3ap2c0N9g7bFoXh3hng7UnKHIrHgdw0eFC3lXLNPezXbxDII3Ln3nHBuvK6Qm93AYOTA9933kwrQriF4oich27BTKGgzXc4DwNvbBV818Gjrxi1X7WvJeu3N13AOkCmhzYPZ3HliTAlRwhibnp6uVN-r7N34MuFWQAEMGaTgOdPSgWHuMu6O47ws_KuDdTa2k4nOyjFl3Ii_FhCO3jhtmcZHmif8oslxjN2RqyKs4anXnNH0Ml9IOfOhbABsKJ2OUSV2D7RQ2YTVgN8chUABAmdL1f4WZnV9QfOi_XG97vUF5-rKYY9tc3sLh5o_5KgFvFFlyoMNRwrHQhuGf1sNyq_X4FDA1fO9DCEML9IxxA7hjF04OHSY3FvN_dxLoTYXb9RFicKPcnNzeboGqAqJ8B735LLg8BmplZgKt4sI2Opud097VQdL14b1ICzi3queYNpSaiWmT6x6HFwyklRBylw6pK3NgSH0wGy_9BKEQXeIZfWVABnlqfpyDPC-gpRWbxTiLB0I7rTA2PWbKPrUTwP7hJLKCTzrBe7c--HqZVI-sL3cwYmkzu-auTmpI60b95GT1S8Q0meiE5lNSdhwR35uPHjgYpDV7xmQZQFhpFFfebkMPCYgCsgB8vD1BVOQ4z58B-nUNq9OZDfHxXxuRebO4qIVZwrWXEwfTPTbf2_6KyYb1ByMR0_JE1BTN63p739Ni9fB0FX0D6Biiy2L219bPr9adhy1LCxGqCOlTMmpkPKwCf-ruZNxFo2LD8wGAhlcWErSQWpQ3J_-BTvcgP9Uq-TAsLcCiNDUrCGfoYSwhuF1fDrx8BdgEvuSFOjFVGWI23MmgKOP_A3VByEd-32SPsLumI-x_sOkJaUUsxksxNgHEuQzZmPcv1rxR77JvbV3YHjJ_0pT6Rt24Hvdxsxx7tZOoGyqhLv-gma71X3r5tCtNcx-yBpxifkVmax9jBs47xmuVVyCYB2nFini3i9jwc3hqW8_v7btMtcGGfkoqR-MtBt7kx_XIfReL-ezARKJaG4Zxfr3t2DxyRj8vYnByUV74u67NsMhjYMckE85dMkdBr23pkFn3oEAW1N2CsL1SQlmKcvqidzmugK0zD6TzTQKy9g_5QXIY9I1vqiq-14xsoiISXRCXAt8u4WB-MYw_eSmS-9dZW2gAl4oZsLe09TMx5mA4j8-2HImmoITpA0XmooitgDlKIZTODov1pwvahqNbGWCYvRPbRYMy7QLnS3rpubphaAyTT7FbvmRH_Qty2Qbi-duGBJVKpmS3E7PEZx6uGPqQuXzL7uaizC09MxExbK8naMoq1RnQfiOCHtrvThKPSYdYqWxtDZHuNX28utnW_PJ3IT4z0DtZf81kody2iL_wgwxC08CnVwpbEeI5ttWUZW57E33ndyxJTT1M8bSSWLlG1jOYWuM2v8JHQGKRPdTx7cVhVX9TZeo5llMBOG1x3fQwcYWIg1b-qIKV8W6gm5L1-Or50cqyJk5wmg-FFOGCqbbILHhTY0HLCTy-pE5TvJP5ZerMXiQkZodoJTLTBz6fYqBvg9ODVBshYP1D77BOO8K1JedtijfX2d9_XewpqpSk-lg==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LWx1bmEtMjAyNjA5MjJ8YXp1cmUifQ\",\"format\":\"azure-openai-responses-v1\",\"id\":\"rs_0a22eacd1e7b5496016af5d6cc33388190b85d1f47277a4d4f\",\"index\":1}]}}],\"usage\":{\"prompt_tokens\":168,\"completion_tokens\":62,\"total_tokens\":230,\"cost\":0,\"is_byok\":true,\"prompt_tokens_details\":{\"cached_tokens\":0,\"cache_write_tokens\":0,\"audio_tokens\":0,\"video_tokens\":0},\"cost_details\":{\"upstream_inference_cost\":0.0000478,\"upstream_inference_prompt_cost\":0.0000168,\"upstream_inference_completions_cost\":0.000031},\"completion_tokens_details\":{\"reasoning_tokens\":33,\"image_tokens\":0,\"audio_tokens\":0}}}"
+}

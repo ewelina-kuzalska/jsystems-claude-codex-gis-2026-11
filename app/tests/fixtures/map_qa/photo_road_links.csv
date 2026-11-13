@@ -1,0 +1,11 @@
+photo_id,osm_way_id,overture_id,distance_m,way_bearing,bearing_diff,directed_bearing_diff,overture_distance_m,osm_candidate_count,match_method,candidate_flags
+panoramax_334a574d-18cb-4c2e-be3f-f99307e080d9,346304716,1784fc12-65fa-44b2-b225-87d81dfc9334,0.392,87.846,0.154,0.154,0.392,2,osm_source_reference,
+panoramax_646ecfdd-ab57-4a28-b411-fb112ced3c97,648167637,1784fc12-65fa-44b2-b225-87d81dfc9334,5.213,87.898,87.898,87.898,5.213,2,osm_source_reference,poor_heading_alignment
+panoramax_0c05d025-f885-4006-8b93-c36481eb46f2,19801715,2a113506-0473-4a0c-85db-6b72664eceb6,4.156,259.169,61.831,61.831,4.156,4,osm_source_reference,poor_heading_alignment;panorama_heading_ambiguous
+panoramax_f0339c3f-3c1d-400f-bbcc-33d755a23899,224930848,1784fc12-65fa-44b2-b225-87d81dfc9334,5.177,87.795,87.795,87.795,5.177,2,osm_source_reference,ambiguous_candidates;poor_heading_alignment
+panoramax_707ebe2f-8e75-4fb7-b8e2-b61f1f7b6549,19801635,e95a3029-94a2-40cf-9650-f9d78089e0ae,3.029,195.94,3.94,176.06,3.029,1,osm_source_reference,camera_against_way_direction;panorama_heading_ambiguous
+panoramax_b35a913d-cbc1-48d5-95bb-140a77cc2f1f,648167636,858bf594-2c88-4088-b33f-4bbb94e2ca40,2.579,121.491,58.509,121.491,2.579,2,osm_source_reference,poor_heading_alignment;boundary_crossing;camera_against_way_direction
+panoramax_30f08d1e-fe31-42d9-b042-607f5237d9ff,1200858206,d5824a89-6f63-4f2f-b0bb-0ed6865f3073,5.455,192.214,12.214,167.786,5.455,7,osm_source_reference,service_way
+panoramax_5c501d68-11d1-4948-9cde-1cc00fb19184,1212676722,a8b47b73-a022-478b-a75a-a25bd4aaaad7,6.977,349.517,,,6.977,3,osm_source_reference,ambiguous_candidates;missing_heading
+panoramax_df4d3a9c-5fb6-427f-8c54-293ed6ea354b,,,,,,,,0,none,no_osm_within_25m
+mapillary_1127617272466620,1569142157,0f603a98-6248-496b-99e4-ca32fa4c12d3,1.552,174.532,1.025,1.025,1.552,3,spatial_fallback,overture_spatial_only

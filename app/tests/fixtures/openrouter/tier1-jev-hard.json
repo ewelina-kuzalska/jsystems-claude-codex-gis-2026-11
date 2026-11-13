@@ -1,0 +1,63 @@
+{
+  "captured_at": "2026-11-12T15:11:02+00:00",
+  "endpoint": "https://openrouter.ai/api/alpha/decisions",
+  "model": "typesafe/jev-1.14",
+  "contract_versions": {
+    "STATE_TEXT": "V1",
+    "QUESTION": "V1",
+    "SCHEMA": "V1",
+    "IMAGE": "JEV_RESIZE_V1"
+  },
+  "httpx_version": "0.28.1",
+  "note": "Jev, wycinek trudny (etykieta unreadable), JEV_RESIZE_V1",
+  "sent_image_sha256": "333a75f57382c1a1a10c555b1f77a947e1838b1cc55b9a81254b5aac4dc55a67",
+  "sent_image_size": [
+    306,
+    280
+  ],
+  "elapsed_s": 0.36,
+  "request_summary": {
+    "model": "typesafe/jev-1.14",
+    "state": [
+      "An image crop from a street-level photograph.",
+      {
+        "type": "image_url",
+        "image_url": {
+          "url": "<image sha256=333a75f57382c1a1a10c555b1f77a947e1838b1cc55b9a81254b5aac4dc55a67>"
+        }
+      }
+    ],
+    "questions": {
+      "b33_value": {
+        "type": "choice",
+        "instructions": "Is there a round Polish B-33 maximum speed limit sign (red ring, black number) in this image? If yes, which number does it show?",
+        "criteria": {
+          "10": "a B-33 sign showing this number",
+          "20": "a B-33 sign showing this number",
+          "30": "a B-33 sign showing this number",
+          "40": "a B-33 sign showing this number",
+          "50": "a B-33 sign showing this number",
+          "60": "a B-33 sign showing this number",
+          "70": "a B-33 sign showing this number",
+          "80": "a B-33 sign showing this number",
+          "90": "a B-33 sign showing this number",
+          "100": "a B-33 sign showing this number",
+          "110": "a B-33 sign showing this number",
+          "120": "a B-33 sign showing this number",
+          "130": "a B-33 sign showing this number",
+          "140": "a B-33 sign showing this number",
+          "other": "a B-33 sign whose number is not in this list",
+          "none": "no B-33 sign; includes zone signs and end-of-limit signs",
+          "unreadable": "a sign is present but its number cannot be read"
+        }
+      }
+    }
+  },
+  "status": 200,
+  "headers": {
+    "date": "Thu, 12 Nov 2026 15:11:02 GMT",
+    "content-type": "application/json",
+    "x-generation-id": "gen-dec-1794496262-QYlnJqjXlTKb6KyxzTAL"
+  },
+  "body": "{\"model\":\"typesafe/jev-1.14-20261014\",\"answers\":{\"b33_value\":{\"type\":\"choice\",\"choice\":\"50\",\"probabilities\":{\"10\":0,\"20\":0,\"30\":0.03,\"40\":0.01,\"50\":0.84,\"60\":0.05,\"70\":0,\"80\":0.01,\"90\":0,\"100\":0,\"110\":0,\"120\":0,\"130\":0,\"140\":0,\"other\":0.01,\"none\":0.02,\"unreadable\":0.03},\"confidence\":0.83}},\"usage\":{\"input_tokens\":950,\"output_tokens\":161,\"cost\":0,\"is_byok\":true,\"cost_details\":{\"upstream_inference_cost\":0.0000399,\"upstream_inference_prompt_cost\":0.0000399,\"upstream_inference_completions_cost\":0}},\"id\":\"gen-dec-1794496262-QYlnJqjXlTKb6KyxzTAL\",\"provider\":\"TypeSafe\"}"
+}

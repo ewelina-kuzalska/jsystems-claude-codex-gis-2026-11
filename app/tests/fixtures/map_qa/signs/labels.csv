@@ -1,0 +1,9 @@
+photo_id,sign_value,status,method,reviewers,note,negative_type
+mapillary_1931009810597411,20,certain,independent_crop_readings,Codex (OpenAI); GLM-5.3-Flash (Z.ai/OpenCode),,
+mapillary_224324516912032,20,certain,independent_crop_readings,Codex (OpenAI); GLM-5.3-Flash (Z.ai/OpenCode),,
+mapillary_1237130608489136,50,certain,independent_crop_readings,Codex (OpenAI); GLM-5.3-Flash (Z.ai/OpenCode),,
+mapillary_915915556657317,90,certain,independent_crop_readings,Codex (OpenAI); GLM-5.3-Flash (Z.ai/OpenCode),,
+mapillary_491666962263649,100,certain,independent_crop_readings,Codex (OpenAI); GLM-5.3-Flash (Z.ai/OpenCode),,
+mapillary_1543264237143674,none,certain,independent_crop_readings,Codex (OpenAI); GLM-5.3-Flash (Z.ai/OpenCode),,limit_end
+mapillary_305451881039193,none,uncertain,independent_crop_readings,Codex (OpenAI); GLM-5.3-Flash (Z.ai/OpenCode),Odczyt agenta: none; GLM: unreadable. Rozbieżność pozostawiona do ręcznego przeglądu.,weight
+mapillary_137982605041578,unreadable,certain,independent_crop_readings,Codex (OpenAI); GLM-5.3-Flash (Z.ai/OpenCode),"Silne rozmycie ruchu; odczyt wartości niewiarygodny, wyłączony z pozytywów.",unreadable

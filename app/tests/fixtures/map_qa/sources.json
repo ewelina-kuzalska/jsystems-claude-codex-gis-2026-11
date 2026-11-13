@@ -1,0 +1,142 @@
+{
+  "created_at": "2026-11-02T23:52:58.440512+00:00",
+  "area": "Kraków i najbliższe okolice",
+  "bbox_wgs84": [
+    19.8,
+    49.95,
+    20.15,
+    50.15
+  ],
+  "coordinate_order": "longitude, latitude",
+  "osm": {
+    "source": "Geofabrik małopolskie",
+    "url": "https://download.geofabrik.de/europe/poland/malopolskie-latest.osm.pbf",
+    "extract_date": "2026-11-01T21:21:36Z",
+    "rows": 131,
+    "license": "ODbL-1.0",
+    "highway_included": [
+      "motorway",
+      "motorway_link",
+      "trunk",
+      "trunk_link",
+      "primary",
+      "primary_link",
+      "secondary",
+      "secondary_link",
+      "tertiary",
+      "tertiary_link",
+      "residential",
+      "living_street",
+      "unclassified",
+      "service",
+      "track",
+      "road",
+      "busway"
+    ],
+    "geometry_selection": "Whole source ways intersecting bbox, without artificial end nodes. boundary_crossing marks overhang.",
+    "tags": "Complete source tags preserved as UTF-8 JSON string; node_ids correspond to geometry vertices.",
+    "crs": "EPSG:4326"
+  },
+  "overture": {
+    "release": "2026-10-21.0",
+    "rows": 11,
+    "license": "ODbL-1.0",
+    "crs": "OGC:CRS84",
+    "source_urls": [
+      "https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/release/2026-10-21.0/theme=transportation/type=segment/part-00083-4816c7fe-db3a-5220-a458-bc399235eff9-c000.zstd.parquet",
+      "https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/release/2026-10-21.0/theme=transportation/type=segment/part-00085-af937faa-3d2d-52bb-aa39-d1e6be9fb3d7-c000.zstd.parquet"
+    ],
+    "classes_excluded": [
+      "footway",
+      "path",
+      "steps",
+      "cycleway",
+      "pedestrian",
+      "bridleway"
+    ],
+    "columns": "id, geometry, class, subclass, name, sources, connectors, speed_limits, road_surface, road_flags, access_restrictions, level_rules, bbox, version",
+    "selection": "road subtype, bbox intersection; source segment geometry retained"
+  },
+  "photos": {
+    "rows": 10,
+    "panoramax": 461,
+    "mapillary": 100,
+    "offline": 40,
+    "license": "CC-BY-SA-4.0",
+    "image_credits": "photos.csv; offline/ATTRIBUTION.csv",
+    "panoramax_discovery_images": 1792,
+    "panoramax_discovery_sequences": 72,
+    "panoramax_discovery_url": "https://api.panoramax.xyz/api/search",
+    "sampling": "Spatial tiles, interleaved sequences and spaced frames; reviewed non-road images and identical SHA-256 duplicates removed. Mapillary photographs are associated with selected speed-limit map features, not a random city sample. One unreviewed Mapillary frame was replaced by a visually verified loose-gravel approach to a paved junction, without changing the reference or offline subsets.",
+    "width_height": "Manifest records final thumbnail dimensions; is_panorama is an aspect-ratio heuristic (>2.5), not an authoritative projection type."
+  },
+  "mapillary": {
+    "signs": 1730,
+    "sign_scope": "Selected regulatory maximum-speed-limit classes g1, spatially tiled bounded API sample, not a complete city inventory. Saturated tiles can omit features.",
+    "sign_license": "ODbL-1.0 (public derived metadata under Mapillary OSM compatibility permission)",
+    "detection_images": 20,
+    "detections": 3481,
+    "image_api": "Graph API v4 per-image metadata; /images search returned HTTP 500. Image IDs obtained from map_features.images.",
+    "sign_endpoint": "https://graph.mapillary.com/map_features"
+  },
+  "links": {
+    "rows": 10,
+    "crs_for_distance": "EPSG:2180",
+    "radius_m": 25,
+    "bearing": "Local tangent within +/-5 m of projected camera position, converted back to true-north geodesic bearing. bearing_diff is minimum forward/reverse angular difference (0-90 degrees).",
+    "ranking": "distance_m + bearing_diff/9; missing heading contributes 5 m to rank. Ties broken by distance then OSM id. Alternative score within 2 m marks ambiguous_candidates.",
+    "overture": "Prefer a source-record reference to the chosen OSM way within 25 m of the camera, otherwise a spatial fallback within 25 m.",
+    "direction": "camera heading is not travel direction; camera_against_way_direction is a review flag, not an access violation.",
+    "status": "Input candidates, not ground-truth assignment or conflict verdicts."
+  },
+  "reference": {
+    "images": 100,
+    "questions": [
+      "surface",
+      "junction_visible",
+      "street_lighting_visible",
+      "speed_limit_value"
+    ],
+    "method": "Visual inspection of each reference photograph; uncertainty stored per label. Three questions on 80 Panoramax photographs and four on 20 Mapillary photographs.",
+    "scope": "Labels for measuring image interpretation quality; no map-error verdicts."
+  },
+  "databricks": {
+    "required": false,
+    "catalog": "workspace",
+    "schema": "map_qa",
+    "volume": "/Volumes/workspace/map_qa/inputs/",
+    "tables": [
+      "osm_roads",
+      "overture_segments",
+      "photos",
+      "photo_road_links",
+      "traffic_signs"
+    ],
+    "geometry_encoding": "BINARY WKB; construct GEOMETRY with explicit SRID 4326 in queries",
+    "cli_version": "1.23.0",
+    "sql_transport": "SQL Statement Execution REST API 2.0",
+    "managed_mcp_path": "/ai-gateway/mcp-services/system.ai.dbsql",
+    "legacy_mcp_path_status": "JSON-RPC NOT_FOUND: feature not enabled on tested workspace",
+    "verified_at": "2026-11-03T00:13:43.423622+00:00",
+    "snapshot_access": "local files or authorized Databricks workspace"
+  },
+  "files": {
+    "osm_roads.parquet": {
+      "bytes": 46952,
+      "sha256": "a9ffe29027a40cbd70b2bfeb6639836c960e3dbd82d3467f0afc33a449cde38c"
+    },
+    "overture_segments.parquet": {
+      "bytes": 29061,
+      "sha256": "2f31dfcdfe059b7f631f2326feee1c1c2ec04cdbac3eab0272a41b61b32833b4"
+    },
+    "photo_road_links.csv": {
+      "bytes": 1880,
+      "sha256": "1c11e61af727f243c32e8120dbef626184d386d91e7e10a6602cc74542449d5d"
+    },
+    "photos.csv": {
+      "bytes": 7518,
+      "sha256": "c8922fdb6fb7cbc7b9b36366727ea896edd6c4637abc8c807a53a9ab8c4e2a3d"
+    }
+  },
+  "fixture_note": "Mini-snapshot testowy z prawdziwych danych (app/tests/fixtures)."
+}

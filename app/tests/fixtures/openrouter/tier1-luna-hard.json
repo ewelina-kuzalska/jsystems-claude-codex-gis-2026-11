@@ -1,0 +1,63 @@
+{
+  "captured_at": "2026-11-12T15:10:02+00:00",
+  "endpoint": "https://openrouter.ai/api/alpha/decisions",
+  "model": "openai/gpt-6-luna-decisions",
+  "contract_versions": {
+    "STATE_TEXT": "V1",
+    "QUESTION": "V1",
+    "SCHEMA": "V1",
+    "IMAGE": "ORIGINAL"
+  },
+  "httpx_version": "0.28.1",
+  "note": "Luna Decisions, wycinek trudny (etykieta unreadable)",
+  "sent_image_sha256": "2cb6feda0fc57affe35503987c06f01f7c1d23daec37fb37941830a92145ef5d",
+  "sent_image_size": [
+    85,
+    78
+  ],
+  "elapsed_s": 0.671,
+  "request_summary": {
+    "model": "openai/gpt-6-luna-decisions",
+    "state": [
+      "An image crop from a street-level photograph.",
+      {
+        "type": "image_url",
+        "image_url": {
+          "url": "<image sha256=2cb6feda0fc57affe35503987c06f01f7c1d23daec37fb37941830a92145ef5d>"
+        }
+      }
+    ],
+    "questions": {
+      "b33_value": {
+        "type": "choice",
+        "instructions": "Is there a round Polish B-33 maximum speed limit sign (red ring, black number) in this image? If yes, which number does it show?",
+        "criteria": {
+          "10": "a B-33 sign showing this number",
+          "20": "a B-33 sign showing this number",
+          "30": "a B-33 sign showing this number",
+          "40": "a B-33 sign showing this number",
+          "50": "a B-33 sign showing this number",
+          "60": "a B-33 sign showing this number",
+          "70": "a B-33 sign showing this number",
+          "80": "a B-33 sign showing this number",
+          "90": "a B-33 sign showing this number",
+          "100": "a B-33 sign showing this number",
+          "110": "a B-33 sign showing this number",
+          "120": "a B-33 sign showing this number",
+          "130": "a B-33 sign showing this number",
+          "140": "a B-33 sign showing this number",
+          "other": "a B-33 sign whose number is not in this list",
+          "none": "no B-33 sign; includes zone signs and end-of-limit signs",
+          "unreadable": "a sign is present but its number cannot be read"
+        }
+      }
+    }
+  },
+  "status": 200,
+  "headers": {
+    "date": "Thu, 12 Nov 2026 15:10:03 GMT",
+    "content-type": "application/json",
+    "x-generation-id": "gen-dec-1794496202-Oj6faaDqqgloTf8cxmyR"
+  },
+  "body": "{\"model\":\"openai/gpt-6-luna-decisions-20261006\",\"answers\":{\"b33_value\":{\"type\":\"choice\",\"choice\":\"unreadable\",\"probabilities\":{\"10\":0.02,\"20\":0.09,\"30\":0.05,\"40\":0.02,\"50\":0.02,\"60\":0.01,\"70\":0.02,\"80\":0.01,\"90\":0.01,\"100\":0.01,\"110\":0.01,\"120\":0.01,\"130\":0.01,\"140\":0.01,\"other\":0.01,\"none\":0.02,\"unreadable\":0.67},\"confidence\":0.65}},\"usage\":{\"input_tokens\":392,\"output_tokens\":0,\"cost\":0,\"is_byok\":true,\"cost_details\":{\"upstream_inference_cost\":0.0000392,\"upstream_inference_prompt_cost\":0.0000392,\"upstream_inference_completions_cost\":0}},\"id\":\"gen-dec-1794496202-Oj6faaDqqgloTf8cxmyR\",\"provider\":\"Azure\"}"
+}
