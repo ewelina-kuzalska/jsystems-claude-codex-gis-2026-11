@@ -10,3 +10,6 @@ app/tests/fixtures/** -text
 # map-qa: templates and golden snapshots compared byte-for-byte
 app/src/map_qa/templates/*.j2 text eol=lf
 app/tests/**/__snapshots__/*.ambr text eol=lf
+
+# map-qa snapshot: byte-exact inputs; hashes in sources.json are of the committed (LF) bytes
+course-materials/exercise-data/map-qa/** -text
