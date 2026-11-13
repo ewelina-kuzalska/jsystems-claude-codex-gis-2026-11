@@ -1,7 +1,7 @@
 # Manual QA — kamień milowy M1 (aplikacja bez C4)
 
 **Data:** 2026-11-12 · **Commit aplikacji:** `b9c6a98` · **Uruchomienie:** `20261112T154614Z`
-**Wykonał:** orkiestrator (Claude Code). **Akceptacja wyglądu przez człowieka:** ⏳ oczekuje (plan §6, bramka 2).
+**Wykonał:** orkiestrator (Claude Code). **Akceptacja wyglądu przez człowieka:** ✅ zaakceptowano 2026-11-13.
 
 ## Polecenie
 

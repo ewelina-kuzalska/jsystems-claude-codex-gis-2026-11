@@ -1,7 +1,7 @@
 # Manual QA — kamień milowy M2 (pełna aplikacja z C4)
 
 **Data:** 2026-11-12 · **Commit aplikacji:** `1a2453a` (po poprawkach z przeglądu T27)
-**Wykonał:** orkiestrator (Claude Code). **Akceptacja wyglądu przez człowieka:** ⏳ oczekuje (plan §6, bramka 2).
+**Wykonał:** orkiestrator (Claude Code). **Akceptacja wyglądu przez człowieka:** ✅ zaakceptowano 2026-11-13.
 
 ## Polecenia (prawdziwe endpointy OpenRouter, świeży cache)
 
