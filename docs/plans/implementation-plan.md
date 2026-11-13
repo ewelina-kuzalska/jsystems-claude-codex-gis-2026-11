@@ -1,6 +1,6 @@
 # Plan implementacji: Map QA (cała aplikacja, fazami)
 
-> **Status: ZREALIZOWANY 2026-11-13.** Wygląd raportów M1/M2 zaakceptowany przez użytkownika, push do `fork` wykonany. PR (T29) odroczony zgodnie z decyzją. Wykonanie sekwencyjne przez orkiestratora (§6 fallback).
+> **Status: ZREALIZOWANY 2026-11-13.** Wygląd raportów M1/M2 zaakceptowany przez użytkownika, push do `fork` wykonany, PR #2 w forku utworzony na prośbę użytkownika. Wykonanie sekwencyjne przez orkiestratora (§6 fallback).
 >
 > **Uwaga środowiskowa (rozwiązana 2026-11-13):** `core.autocrlf=true` zamienił LF→CRLF w plikach tekstowych snapshotu (SHA-256 niezgodne z `sources.json`, kod 2 zgodnie z AC-01). Po zgodzie użytkownika `.gitattributes` ma `course-materials/exercise-data/map-qa/** -text`, a kopia robocza ma bajty z gita: `map-qa run` z repo kończy się kodem 0 w 46 s (TAC-04).
 >
@@ -119,7 +119,7 @@ Modele: **Orch** to orkiestrator (Opus 5.5, ta sesja). **Haiku** to subagent Cla
 | **T26** Pełna weryfikacja | `uv sync --frozen`, `ruff check`, `ruff format --check`, `pytest` (liczby), E2E, start CLI. Osobno build / testy / start | ADR-000 §10 TAC-01–07; AGENTS.md „Verification” | T25 (lub T18 przy fallbacku) | Orch | — | Raport z trzema osobnymi sekcjami i liczbami pominięć z powodami. Bez commita, jeśli nic nie zmieniono | done (bez commita: build/lint czyste, 294 testy wykryte, 289 zaliczonych + 5 `live_api` osobno, start CLI OK) |
 | **T27** Niezależny review | Lista problemów z ważnością, bez edycji kodu | AGENTS.md „Completion Criteria” | T26 | Sol (`codex exec review`, sandbox read-only), drugi przegląd Claude `/code-review` | `.agent-briefs/T27-review.md` (wynik) | Orch weryfikuje każde znalezisko. Poprawki jako osobne zadania z własnymi commitami | done (Codex `gpt-6.1-sol` read-only + subagent Claude; 11 poprawek w osobnych commitach, 2 znaleziska odrzucone z uzasadnieniem) |
 | **T28** E2E `live_api` + Manual QA M2 + pomiary C4 | Test E2E `live_api` (ADR-006 D-604): `map-qa run --with-signs --yes` na prawdziwych endpointach dla `--tier1-model luna-decisions` i `jev`, świeży cache w `tmp_path`, w limicie 25 żądań. Druga runda na tym samym cache = 0 nowych żądań (AC-26). Ręczne uruchomienie z porównaniem accuracy obu modeli kroku 1. Zrzuty z C4 i kolejką ręczną. Uzupełnione ADR-003 §9 (koszt, czas, kształt obrazu) | AC-26; ADR-003 §9, TAC-003-05; AGENTS.md „Manual QA” | T27 | Orch + **człowiek** | `app/tests/e2e/test_cli_c4_live.py`, `reports/map-qa/qa/M2/**`, `docs/ADR/003-ai-sign-reading.md` (§9), `docs/ADR/006-c4-models-and-real-endpoint-testing.md` (pomiary) | Notatka QA i diff ADR. Push do `fork`. Commity `Docs: M2 manual QA evidence`, `Docs: record C4 measurements` | done (`6f8b160`, `2dc4a08`); wygląd zaakceptowany przez użytkownika 2026-11-13, push do `fork` |
-| **T29** Pull request | — | AGENTS.md „Commit Rules” | T28 | Orch | — | **Odroczone (decyzja użytkownika).** Gotowy opis PR w `.agent-briefs/T29-pr.md` | blocked |
+| **T29** Pull request | — | AGENTS.md „Commit Rules” | T28 | Orch | — | **Odroczone (decyzja użytkownika).** Gotowy opis PR w `.agent-briefs/T29-pr.md` | done: PR #2 w forku (`map-app-implementation` → `main`), 2026-11-13 |
 
 ---
 
